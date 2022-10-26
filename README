@@ -1,0 +1,4 @@
+An open source firmware alternative for STC15W104 processor + SYN115 radio transmitter door/window reed sensors.
+
+Some sensors have STC15W101 but this would not support hardware abstraction layer (unless emulated EEPROM area can be used for code space).
+My STC15W104 sensors also have a tamper detect switch which is nice.
