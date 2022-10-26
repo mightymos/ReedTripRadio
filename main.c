@@ -37,8 +37,8 @@
 #include <power-hal.h>
 
 #ifndef MCU_HAS_WAKE_UP_TIMER
-	// Shouldn't happen, unless using an STC12.
-	#error "The selected MCU doesn't have a power-down wake-up timer."
+    // Shouldn't happen, unless using an STC12.
+    #error "The selected MCU doesn't have a power-down wake-up timer."
 #endif // MCU_HAS_WAKE_UP_TIMER
 
 #define RFCODE_LENGTH 3
@@ -94,12 +94,12 @@ void main()
     unsigned char* rfcode = &open[0];
 
     
-	gpioConfigure(&ledPin);
+    gpioConfigure(&ledPin);
     gpioConfigure(&rfVDD);
     gpioConfigure(&rfASK);
     
     // turn off LED
-	gpioWrite(&ledPin, 1);
+    gpioWrite(&ledPin, 1);
     
     // disable VDD to RF chip
     gpioWrite(&rfVDD, 1);
@@ -110,12 +110,12 @@ void main()
     
     enablePowerDownWakeUpTimer(millisecondsToWakeUpCount(5000));
 
-	// Main loop -------------------------------------------------------
-	while (1) {
-		//configureUnusedGpioPins(GPIO_PORT3, M_ALL_PINS);
-		//configureUnusedGpioPins(GPIO_PORT5, 0xef);
-		//enterPowerDownMode();
-		//gpioWrite(&ledPin, !gpioRead(&ledPin));
+    // Main loop -------------------------------------------------------
+    while (1) {
+        //configureUnusedGpioPins(GPIO_PORT3, M_ALL_PINS);
+        //configureUnusedGpioPins(GPIO_PORT5, 0xef);
+        //enterPowerDownMode();
+        //gpioWrite(&ledPin, !gpioRead(&ledPin));
         
         enterPowerDownMode();
         delay1ms(5000);
@@ -151,5 +151,5 @@ void main()
             gpioWrite(&rfVDD, 1);
         }
 
-	}
+    }
 }
