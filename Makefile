@@ -86,9 +86,11 @@ PROJECT_NAME := door-reed-rf-demo
 
 SRCS := \
     coding.c \
+    flash_dump.c \
     $(HAL_DIR)/delay.c \
     $(HAL_DIR)/gpio-hal.c \
     $(HAL_DIR)/power-hal.c \
+    $(HAL_DIR)/timer-hal.c \
 	main.c
 
 CONSOLE_BAUDRATE := 57600

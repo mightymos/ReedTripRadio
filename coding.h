@@ -13,8 +13,8 @@ struct Protocol {
    unsigned char id;
 };  
 
-void rfsyncPulse(struct Protocol* protocol, GpioConfig* rfASK);
-void send(struct Protocol* protocol, const unsigned char byte, const unsigned int numBits, GpioConfig* rfASK);
+void rfsyncPulse(struct Protocol* protocol, GpioConfig* pinASK);
+void send(struct Protocol* protocol, const unsigned char byte, const unsigned int numBits, GpioConfig* pinASK);
 
 
 /*---------------------------------------------------------------------*/

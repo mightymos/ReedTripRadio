@@ -1,5 +1,3 @@
-THIS FIRMWARE IS NOT FULLY WORKING YET!!!
-
 An alternative firmware for STC15W104 processor + SYN115 radio transmitter door/window reed sensors (8051 based processors).
 STC15W104 model has 4KB flash/code space and board also has a tamper detect switch which is nice.
 
@@ -10,7 +8,7 @@ STC does not allow read/verify of written firmware so open source alternative is
 
 Boards contain a header that may be populated with pins labeled with G (ground), T (transmit), and R (receive) for programming.
 
-Reprogramming uses:
+Flashing tool:
 https://github.com/area-8051/stcgal-patched
 
 Firmware uses hardware abstraction layer (HAL):
@@ -19,8 +17,10 @@ https://github.com/area-8051/uni-STC
 Proposed features (some added as compared with original firmware):
 [1] Transmit on reed switch open/close (i.e., like original firmware)
 [2] Transmit on tamper switch opened (i.e., like original firmware)
-[3] Ability to select transmission protocol (i.e., any supported by rc-switch)
-[4] "Heart beat" mode for periodic transmission (at the expense of battery life)
-[5] Adjustable LED blink behavior
-[6] Adjustable sleep behavior
-[7] User configuration/input with tamper switch press
+[3] Invert switches (e.g., open sends "closed" code)
+[4] Ability to select transmission protocol (i.e., any supported by rc-switch)
+[5] "Heart beat" mode for periodic transmission (at the expense of battery life)
+[6] Adjustable LED blink behavior
+[7] Adjustable sleep behavior
+[8] User configuration/input with tamper switch press(es)
+[9] Send other types of information over radio (e.g., user settings, battery?)
