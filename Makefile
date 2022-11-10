@@ -64,7 +64,7 @@
 # for STC15W104 door sensor models
 MCU_FREQ := 10886000
 
-STACK_SIZE := 16
+STACK_SIZE := 24
 
 # 
 MEMORY_SIZES = \
@@ -85,8 +85,6 @@ include ../../makefiles/0-directories.mk
 PROJECT_NAME := door-reed-rf-demo
 
 SRCS := \
-    coding.c \
-    flash_dump.c \
     $(HAL_DIR)/delay.c \
     $(HAL_DIR)/gpio-hal.c \
     $(HAL_DIR)/power-hal.c \
@@ -96,7 +94,8 @@ SRCS := \
 CONSOLE_BAUDRATE := 57600
 CONSOLE_PORT := ttyUSB0
 
-ISP_PORT := ttyUSB0
+STCGAL_OPTIONS := -a -o reset_pin_enabled=true
+ISP_PORT := COM3
 
 # Boilerplate rules ----------------------------------------------------
 include $(MAKE_DIR)/1-settings.mk

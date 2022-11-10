@@ -15,12 +15,13 @@ Firmware uses hardware abstraction layer (HAL):
 https://github.com/area-8051/uni-STC
 
 Proposed features (some added as compared with original firmware):
-[1] Transmit on reed switch open/close (i.e., like original firmware)
-[2] Transmit on tamper switch opened (i.e., like original firmware)
-[3] Invert switches (e.g., open sends "closed" code)
-[4] Ability to select transmission protocol (i.e., any supported by rc-switch)
-[5] "Heart beat" mode for periodic transmission (at the expense of battery life)
-[6] Adjustable LED blink behavior
-[7] Adjustable sleep behavior
-[8] User configuration/input with tamper switch press(es)
-[9] Send other types of information over radio (e.g., user settings, battery?)
+[01] Transmit on reed switch open/close (i.e., like original firmware)
+[02] Transmit on tamper switch opened (i.e., like original firmware)
+[03] Manage power modes
+[04] Invert switches (e.g., open sends "closed" code)
+[05] Ability to select transmission protocol (i.e., any supported by rc-switch)
+[06] "Heart beat" mode for periodic transmission (at the expense of battery life)
+[07] Adjustable LED blink behavior
+[08] Adjustable sleep behavior
+[09] User configuration/input with tamper switch press(es)
+[10] Send other types of information over radio (e.g., tamper closed code, user settings?, battery?)
