@@ -114,7 +114,7 @@ enum {
 // ASK modulation to RF chip
 #define RADIO_ASK     P3_4
 
-// FIXME: tamper interrupt is not set up yet because it may be power inefficient to have pull up enabled all the time
+// save switch states in interrupts for use in main loop
 struct Flags {
     volatile bool reedInterrupted;
     volatile bool tamperInterrupted;
@@ -382,7 +382,7 @@ void main()
 {
     INIT_EXTENDED_SFR();
     
-    // might allow human to control these later (with tamper switch presses?)
+    // TODO: might allow human to control these later (with tamper switch presses?)
     volatile bool heartbeatForTamper = false;
     const volatile bool heartbeatForReed   = false;
     
@@ -454,19 +454,7 @@ void main()
         enterPowerDownMode();
 
         // provided in software UART example
-        // FIXME: do not understand how to actually receive
-        // if (REND) {
-            // buf[r++ & 0x0f] = RBUF;
-            // REND = 0;
-        // }
-        
-        // if (TEND) {
-          // if (t != r) {
-            // TEND = 0;
-            // TBUF = buf[t++ & 0x0f];
-            // TING = 1;
-          // }
-        // }
+        // FIXME: implement receive with software serial UART
         
         
         // 
@@ -512,8 +500,8 @@ void main()
         }
  
         // FIXME: we may be missing push-release button presses if they are quick enough
-        //        this does not necessarily matter if we just want to detect switch cover being opened
-        //        but if we use button for user input switch debouncing etc. needs to be robust
+        //        this does not necessarily matter if we just want to detect housing cover being opened
+        //        but if we use button for user input switch debouncing etc. needs to be more robust
         while (flag.tamperIntCount > 0)
         {
             
