@@ -6,7 +6,20 @@ However this would not support hardware abstraction layer (unless emulated EEPRO
 
 STC does not allow read/verify of written firmware so open source alternative is needed to confirm program behavior.
 
-Boards contain a header that may be populated with pins labeled with G (ground), T (transmit), and R (receive) for programming.
+Boards contain a header that may be populated with pins labeled with G (ground), T (transmit), and R (receive) for flashing.
+
+For receiving radio messages recommend:
+Sonoff Bridge 433 MHz
+https://tasmota.github.io/docs/devices/Sonoff-RF-Bridge-433/
+
+Another alternative firmware for the Sonoff is:
+https://github.com/xoseperez/espurna
+
+ESPurna is nice because it treats wireless sensors as "virtual" sensors (show up as switches in Home Assistant).
+Also ESPurna can learn individual sensor codes.
+
+Some Sonoff Bridge contain an onboard EFM8BB1 which can additionally be flashed to support more radio protocols:
+https://github.com/Portisch/RF-Bridge-EFM8BB1
 
 Flashing tool:
 https://github.com/area-8051/stcgal-patched
@@ -15,13 +28,13 @@ Firmware uses hardware abstraction layer (HAL):
 https://github.com/area-8051/uni-STC
 
 Proposed features (some added as compared with original firmware):
-[01] Transmit on reed switch open/close (i.e., like original firmware)
-[02] Transmit on tamper switch opened (i.e., like original firmware)
-[03] Manage power modes
-[04] Invert switches (e.g., open sends "closed" code)
-[05] Ability to select transmission protocol (i.e., any supported by rc-switch)
-[06] "Heart beat" mode for periodic transmission (at the expense of battery life)
-[07] Adjustable LED blink behavior
-[08] Adjustable sleep behavior
-[09] User configuration/input with tamper switch press(es)
-[10] Send other types of information over radio (e.g., tamper closed code, user settings?, battery?)
+[01] Transmit on reed switch open/close (interrupt)                                 (DONE)
+[02] Transmit on tamper switch open/close (interrupt)                               (DONE)
+[03] Manage power modes                                                             (PARTIAL) (remains to measure power usage)
+[04] Invert switches so that open sends "closed" code                               (TODO)
+[05] Ability to select any supported rc-switch transmission protocol                (TODO)
+[06] "Heart beat" mode for periodic transmission                                    (PARTIAL) (how to toggle enable?)
+[07] Adjustable LED blink behavior                                                  (TODO)
+[08] Adjustable sleep behavior                                                      (TODO)
+[09] User configuration/input with tamper switch press(es)                          (TODO)
+[10] Send information over radio (e.g., settings?, battery?)                        (TODO)

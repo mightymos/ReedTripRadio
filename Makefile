@@ -58,11 +58,11 @@
 # Target MCU settings --------------------------------------------------
 
 # Note: try lowest speed for power efficiency on STC15W101 series MCU (pg. 1, sec. 1)
-#MCU_FREQ := 5990000]
+#MCU_FREQ := 5990000
 #MCU_FREQ := 5414000
 
-# for STC15W104 door sensor models
-MCU_FREQ := 10886000
+# for STC15W104 door sensor model
+MCU_FREQ := 10598000
 
 STACK_SIZE := 24
 
@@ -73,7 +73,7 @@ MEMORY_SIZES = \
 	--stack-size $(STACK_SIZE) \
     --code-size 4096
 
-#FIXME: specify eeprom address selection to a separate macro?
+#
 MEMORY_MODEL := --model-small
 
 HAS_DUAL_DPTR := n
@@ -86,15 +86,14 @@ PROJECT_NAME := door-reed-rf-demo
 
 SRCS := \
     $(HAL_DIR)/delay.c \
-    $(HAL_DIR)/gpio-hal.c \
     $(HAL_DIR)/power-hal.c \
     $(HAL_DIR)/timer-hal.c \
+    uart_software.c \
 	main.c
 
 CONSOLE_BAUDRATE := 57600
 CONSOLE_PORT := ttyUSB0
 
-STCGAL_OPTIONS := -a -o reset_pin_enabled=true
 ISP_PORT := COM3
 
 # Boilerplate rules ----------------------------------------------------

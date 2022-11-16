@@ -1,8 +1,9 @@
-#ifndef _FLASH_DUMP_H
-#define _FLASH_DUMP_H
+#ifndef _SOFTWARE_UART_H
+#define _SOFTWARE_UART_H
 
 #include <STC/15W10x/DIP8.h>
 
+// FIXME: make this a macro computed from MCU_FREQ in Makefile
 //define baudrate const
 //BAUD = 65536 - FOSC/3/BAUDRATE/M (1T:M=1; 12T:M=12)
 //NOTE: (FOSC/3/BAUDRATE) must be greater than 98, (RECOMMEND GREATER THAN 110)
@@ -31,23 +32,16 @@
 #define BAUD 0xFA18 //2400bps @ 10.886MHz
 
 
-
-//#define BAUD 2400
-
-
-
-//sfr AUXR = 0x8E;
-//sbit RXB = P3^0; //define UART TX/RX port
-//sbit TXB = P3^1;
-
+// pin definitions
 #define RXB P3_0
 #define TXB P3_1
 #define BTN P3_2
 
-//typedef bit BOOL;
-typedef __bit BOOL;
-typedef unsigned char BYTE;
-typedef unsigned int WORD;
+extern unsigned char TBUF,RBUF;
+extern __bit TING,RING;
+extern __bit TEND,REND;
+extern unsigned char t, r;
+extern unsigned char buf[16];
 
 
 //-----------------------------------------
@@ -57,16 +51,13 @@ void tm0() __interrupt 1 __using 1;
 
 //-----------------------------------------
 //initial UART module variable
-void UART_INIT();
-void init_software_uart_timer0(void);
+void uart_init();
+void enable_timer0(void);
 
 void putc(const char c);
 void puts(const char *s);
 
-void puthex(BYTE v);
-void puthex2(const BYTE x);
+void puthex(unsigned char v);
+void puthex2(const unsigned char x);
 
-void putihex(WORD addr, BYTE len, BYTE type);
-void check_flash(uint16_t startAddress, uint16_t endAddress);
-
-#endif // _FLASH_DUMP_H
+#endif // _SOFTWARE_UART_H
