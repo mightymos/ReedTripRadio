@@ -80,7 +80,7 @@ struct Protocol {
     bool invertedSignal;
 };
 
-
+// FIXME: I do not think other protocols are working with Sonoff Bridge w/ Tasmota so need to investigate
 // changed pulse lengths given in rc-switch project from microseconds to 10 microseconds units
 // because available delay function is delay10us() with hardware abstraction layer
 static const struct Protocol protocols[] = {
