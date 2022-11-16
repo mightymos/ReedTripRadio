@@ -387,7 +387,7 @@ void main()
     const volatile bool heartbeatForReed   = false;
     
 
-    unsigned char protocolIndex = 0;
+    const unsigned char protocolIndex = 0;
     unsigned char rxByte;
     
     // code pointer for reading microcontroller unique id

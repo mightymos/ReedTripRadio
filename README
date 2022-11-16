@@ -1,4 +1,4 @@
-Alternative firmware for wireless 433MHz Magnetic Door Sensor Door Window reed sensor.
+Alternative firmware for wireless 433MHz magnetic door/window reed sensors.
 
 STC15W104 are 8051 based processors + SYN115 radio transmitter.
 '104 model has 4KB flash space and board also has a tamper detect switch which is cool.
