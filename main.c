@@ -434,10 +434,15 @@ void main()
     enable_timer0();
     
     // demonstrate that software serial UART is working
-    puts("Startup...\r\n");
+    puts("Startup...");
+    putc('\r');
+    puts(__DATE__);
+    putc('\r');
+    puts(__TIME__);
+    putc('\r');
     puts("Protocol: 0x");
     puthex2(protocolIndex);
-    puts("\r\n");
+    putc('\r');
 
     // Main loop -------------------------------------------------------
     while (1)
