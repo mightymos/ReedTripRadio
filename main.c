@@ -16,15 +16,28 @@
     #error "The selected MCU doesn't have a power-down wake-up timer."
 #endif // MCU_HAS_WAKE_UP_TIMER
 
-#define RFCODE_LENGTH  3
+
+// hardware pin definitions
+// circuit is voltage divider and high side transistor with processor controlling divider
+#define RADIO_VDD     P3_0
+// LED is attached to P3.1 for door sensor RF 433 MHz (STC15W101 and STC15W104 processor, SYN115 RF transmitter)
+#define LED_PIN       P3_1
+#define REED_SWITCH   P3_2
+#define TAMPER_SWITCH P3_3
+// ASK modulation to RF chip
+#define RADIO_ASK     P3_4
+
+
+// radio protocol requires sending packet twice so it is accepted at receiver
 #define REPEAT_TIMES   2
-#define BITS_PER_PIECE 8
+//#define RFCODE_LENGTH  3
+//#define BITS_PER_PIECE 8
 
 // milliseconds
 #define RADIO_STARTUP_TIME 120
 
 // milliseconds
-#define SLEEP_TIME 5000
+#define SLEEP_TIME 10000
 
 // milliseconds
 #define LED_HIGH_TIME 750
@@ -33,21 +46,32 @@
 // milliseconds
 #define CONTROLLER_STARTUP_TIME 200
 
-// unique ID location in RAM
-#define GUID_ADDR_RAM 0xF1
+// array size
+#define SWITCH_HISTORY_SIZE 3
 
 // unique ID location in FLASH
 //4K MCU(eg. STC15F404AD, STC15F204EA, STC15F104EA)
 #define ID_ADDR_ROM 0x0FF9
 
+// unique ID location in RAM
+//#define GUID_ADDR_RAM 0xF1
 
 // placeholder bytes (0x00) are filled with global unique identification number to derive radio messages as original firmware did
 // see sec. 1.12 global unique identification number STC15-English.pdf
 // last byte is a code indicating state (open, closed, tamper) as used on original firmware
-static unsigned char open[RFCODE_LENGTH]         = {0x00, 0x00, 0x0A};
-static unsigned char closed[RFCODE_LENGTH]       = {0x00, 0x00, 0x0E};
-static unsigned char tamper[RFCODE_LENGTH]       = {0x00, 0x00, 0x07};
-static const unsigned char debug[RFCODE_LENGTH]  = {0x55, 0xAA, 0x55};
+static unsigned char guid[2] = {0x00, 0x00};
+
+// codes used in original firmware
+static const unsigned char reed_open    = 0x0A;
+static const unsigned char reed_close   = 0x0E;
+static const unsigned char tamper_open  = 0x07;
+
+// added to support tamper closed
+// note: if we resend only a generic tamper code (e.g., 0x07) too quickly due to switch press and release
+//       I think the duplicate sends may be discarded
+static const unsigned char tamper_close = 0x70;
+
+//static const unsigned char debug[RFCODE_LENGTH]  = {0x55, 0xAA, 0x55};
 
 
 // timings taken from rc-switch project
@@ -80,7 +104,7 @@ struct Protocol {
     bool invertedSignal;
 };
 
-// FIXME: I do not think other protocols are working with Sonoff Bridge w/ Tasmota so need to investigate
+// FIXME: Other protocols are not working with Sonoff Bridge w/ Tasmota so need to investigate
 // changed pulse lengths given in rc-switch project from microseconds to 10 microseconds units
 // because available delay function is delay10us() with hardware abstraction layer
 static const struct Protocol protocols[] = {
@@ -103,28 +127,19 @@ enum {
    numProto = sizeof(protocols) / sizeof(protocols[0])
 };
 
-// circuit is voltage divider and high side transistor with processor controlling divider
-#define RADIO_VDD     P3_0
-
-// LED is attached to P3.1 for door sensor RF 433 MHz (STC15W101 and STC15W104 processor, SYN115 RF transmitter)
-#define LED_PIN       P3_1
-#define REED_SWITCH   P3_2
-#define TAMPER_SWITCH P3_3
-
-// ASK modulation to RF chip
-#define RADIO_ASK     P3_4
 
 // save switch states in interrupts for use in main loop
 struct Flags {
     volatile bool reedInterrupted;
     volatile bool tamperInterrupted;
-    volatile bool reedIsOpen;
-    volatile bool tamperIsOpen;
-    volatile unsigned char tamperIntCount;
-    volatile unsigned char reedIntCount;
+    volatile bool reedIsOpen[SWITCH_HISTORY_SIZE];
+    volatile bool tamperIsOpen[SWITCH_HISTORY_SIZE];
+    volatile unsigned char tamperCount;
+    volatile unsigned char reedCount;
 };
 
-struct Flags flag = {.reedInterrupted = false, .tamperInterrupted = false, .reedIsOpen = false, .tamperIsOpen = false, .tamperIntCount = 0, .reedIntCount = 0};
+// isOpen arrays are not initialized
+struct Flags flag = {.reedInterrupted = false, .tamperInterrupted = false, .tamperCount = 0, .reedCount = 0};
 
 
 /*! \brief Brief description.
@@ -139,29 +154,6 @@ unsigned char _sdcc_external_startup(void) __nonbanked
     //enable_xram();
     
     return 0;
-}
-
-
-//-----------------------------------------
-void external_isr0(void) __interrupt 0
-{
-    // disable this interrupt
-    IE1 &= ~M_EX0;
-    
-    flag.reedIsOpen = REED_SWITCH;
-    
-    flag.reedIntCount++;
-}
-
-//-----------------------------------------
-void external_isr1(void) __interrupt 2
-{
-    // disable this interrupt
-    IE1 &= ~M_EX1;
-    
-    flag.tamperIsOpen = TAMPER_SWITCH;
-    
-    flag.tamperIntCount++;
 }
 
 // only enable power to radio when we are going to modulate ASK pin (i.e., send data)
@@ -198,6 +190,11 @@ void led_on(void)
 void led_off(void)
 {
     LED_PIN = 1;
+}
+
+void enable_tamper_pullup(void)
+{
+    TAMPER_SWITCH = 1;
 }
 
 void enable_ext0(void)
@@ -283,13 +280,17 @@ void rfsyncPulse(struct Protocol* protocol)
     // rf sync pulse
     radio_ask_high();
     delay10us_wrapper(protocol->pulseLength * protocol->syncFactor.high);
+    //delay10us_wrapper(35);
+    //delay10us_wrapper(65);
     
     radio_ask_low();
     delay10us_wrapper(protocol->pulseLength * protocol->syncFactor.low);
+    //delay10us_wrapper(1085);
+    //delay10us_wrapper(650);
 }
 
 /*! \brief Description
- *         Brief description continued.
+ *         Tips [http://ww1.microchip.com/downloads/en/AppNotes/Atmel-9164-Manchester-Coding-Basics_Application-Note.pdf]
  *
  */  
 void send(struct Protocol* protocol, const unsigned char byte)
@@ -298,6 +299,7 @@ void send(struct Protocol* protocol, const unsigned char byte)
     // because compiler does not understand we are shifting out of hardware pin
     volatile unsigned int i;
     const unsigned char numBits = 8;
+    const unsigned char mask = 1 << (numBits - 1);
     
     // byte for shifting
     volatile unsigned char toSend = byte;
@@ -305,23 +307,30 @@ void send(struct Protocol* protocol, const unsigned char byte)
     // Repeat until all bits sent
     for(i = 0; i < numBits; i++)
     {
-        // FIXME: account for numBits left shift
         // Check bit value, process logic one
-        if((toSend & 0x80) == 0x80)
+        if((toSend & mask) == mask)
         {
             radio_ask_high();
             delay10us_wrapper(protocol->pulseLength * protocol->one.high);
+            //delay10us_wrapper(105);
+            //delay10us_wrapper(130);
             
             radio_ask_low();
             delay10us_wrapper(protocol->pulseLength * protocol->one.low);
+            //delay10us_wrapper(35);
+            //delay10us_wrapper(65);
         }
         else
         {
             radio_ask_high();
             delay10us_wrapper(protocol->pulseLength * protocol->zero.high);
+            //delay10us_wrapper(35);
+            //delay10us_wrapper(65);
             
             radio_ask_low();
             delay10us_wrapper(protocol->pulseLength * protocol->zero.low);
+            //delay10us_wrapper(105);
+            //delay10us_wrapper(130);
 
         }
         
@@ -329,10 +338,9 @@ void send(struct Protocol* protocol, const unsigned char byte)
     }
 }
 
-void sendRadioPacket(unsigned char* rfcode, unsigned char protocol)
+void sendRadioPacket(unsigned char rfcode, unsigned char protocol)
 {
-    unsigned char byteCount;
-    unsigned char repeatCount;
+    unsigned char index;
     
     enable_radio_vdd();
     
@@ -341,21 +349,48 @@ void sendRadioPacket(unsigned char* rfcode, unsigned char protocol)
     // standby delay time (min, 30), typical(75), max(120) milliseconds
     delay1ms(RADIO_STARTUP_TIME);
     
-    for (repeatCount = 0; repeatCount < REPEAT_TIMES; repeatCount++)
+    // sonoff or tasmota or espurna seems to require sending twice to accept receipt
+    for (index = 0; index < REPEAT_TIMES; index++)
     {
         rfsyncPulse(&protocols[protocol]);
 
-        for (byteCount = 0; byteCount < RFCODE_LENGTH; byteCount++)
-        {
-            // send rf key
-            send(&protocols[protocol], rfcode[byteCount]);
-        }
-        
+
+        // send rf key
+        send(&protocols[protocol], guid[0]);
+        send(&protocols[protocol], guid[1]);
+        send(&protocols[protocol], rfcode);        
     }
     
     disable_radio_vdd();
 }
 
+//-----------------------------------------
+void external_isr0(void) __interrupt 0
+{
+    // disable this interrupt
+    //IE1 &= ~M_EX0;
+    
+    if (flag.reedCount < SWITCH_HISTORY_SIZE)
+    {
+        flag.reedIsOpen[flag.reedCount] = REED_SWITCH;
+        
+        flag.reedCount++;
+    }
+}
+
+//-----------------------------------------
+void external_isr1(void) __interrupt 2
+{
+    // disable this interrupt
+    //IE1 &= ~M_EX1;
+    
+    if (flag.tamperCount < SWITCH_HISTORY_SIZE)
+    {
+        flag.tamperIsOpen[flag.tamperCount] = TAMPER_SWITCH;
+    
+        flag.tamperCount++;
+    }
+}
 
 //TODO: push pull mode uses lots of current, so need to see if it is avoidable
 //radioASK     GPIO_PIN_CONFIG(GPIO_PORT3, GPIO_PIN4, GPIO_BIDIRECTIONAL_MODE);
@@ -386,9 +421,13 @@ void main()
     volatile bool heartbeatForTamper = false;
     const volatile bool heartbeatForReed   = false;
     
-
+    // current radio protocol
     const unsigned char protocolIndex = 0;
+    
+    // software uart
     unsigned char rxByte;
+    
+    unsigned char ledPulseCount = 0;
     
     // code pointer for reading microcontroller unique id
     __code unsigned char  *cptr;
@@ -409,21 +448,18 @@ void main()
     radio_ask_low();
     
     // provide a pull up voltage to the tamper switch
-    TAMPER_SWITCH = 1;
+    enable_tamper_pullup();
     
     // give the microcontroller time to stabilize
     delay1ms(CONTROLLER_STARTUP_TIME);
 
 
-    // copy unigue ID to radio codes
+    // copy unigue processor ID from flash to RAM
+    // (sec. 1.12 global unique ID shows placement in ram, but addressing there does not seem to work)
     cptr = (__code unsigned char*) ID_ADDR_ROM;
-    open[0]   = *(cptr + 5);
-    closed[0] = *(cptr + 5);
-    tamper[0] = *(cptr + 5);
-    
-    open[1]   = *(cptr + 6);
-    closed[1] = *(cptr + 6);
-    tamper[1] = *(cptr + 6);
+    guid[0]   = *(cptr + 5);
+    guid[1]   = *(cptr + 6);
+
 
     // enable interrupts
     enable_ext0();
@@ -454,12 +490,15 @@ void main()
         }
         
         
-
-        // this will either wake up due to timer (if enabled) or interrupt
-        enterPowerDownMode();
-
-        // provided in software UART example
+        if ((flag.reedCount == 0) && (flag.tamperCount == 0))
+        {
+            // this will either wake up due to timer (if enabled) or interrupt
+            enterPowerDownMode();
+        }
+        
+        
         // FIXME: implement receive with software serial UART
+        // provided in software UART example
         
         
         // 
@@ -469,10 +508,12 @@ void main()
             // keep checking if tamper is open, if not stop sending out periodic messages
             if (isTamperOpen())
             {            
-                sendRadioPacket(&tamper[0], protocolIndex);
+                sendRadioPacket(tamper_open, protocolIndex);
                 
                 // single pulse LED
-                pulseLED(1);
+                ledPulseCount = 1;
+                
+                //pulseLED(1);
                 //putc('H');
             } else {
                 heartbeatForTamper = false;
@@ -481,54 +522,62 @@ void main()
         
 
         // send reed switch state after count incremented by interrupt
-        while (flag.reedIntCount > 0)
+        while (flag.reedCount > 0)
         {
-
-            if(flag.reedIsOpen)
-            {
-                sendRadioPacket(&open[0], protocolIndex);
-            } else {
-                sendRadioPacket(&closed[0], protocolIndex);
-            }
-            
             // single pulse LED
-            pulseLED(1);
+            ledPulseCount = 1;
+            
+            //pulseLED(1);
             //putc('R');
-            //puthex(flag.reedIntCount);
+            //puthex(flag.reedCount);
             
             //
-            flag.reedIntCount--;
+            flag.reedCount--;
             
-            // re-enable interrupts
-            enable_ext0();
+            if(flag.reedIsOpen[flag.reedCount])
+            {
+                sendRadioPacket(reed_open, protocolIndex);
+            } else {
+                sendRadioPacket(reed_close, protocolIndex);
+            }
             
         }
  
-        // FIXME: we may be missing push-release button presses if they are quick enough
-        //        this does not necessarily matter if we just want to detect housing cover being opened
-        //        but if we use button for user input switch debouncing etc. needs to be more robust
-        while (flag.tamperIntCount > 0)
+
+        // it is easier to miss tamper press releases, so need to count and handle quickly
+        while (flag.tamperCount > 0)
         {
-            
-            sendRadioPacket(&tamper[0], protocolIndex);
-            
             // single pulse LED
-            pulseLED(1);
-            //putc('T');
-            //puthex(flag.tamperIntCount);
+            ledPulseCount = 1;
             
-            //
-            flag.tamperIntCount--;
+            //pulseLED(1);
+            //putc('T');
+            //puthex(flag.tamperCount);
+            
+                        //
+            flag.tamperCount--;
+            
+            if(flag.tamperIsOpen[flag.tamperCount])
+            {
+                sendRadioPacket(tamper_open, protocolIndex);
+            } else {
+                sendRadioPacket(tamper_close, protocolIndex);
+            }
+            
             
             // if tamper is open, begin waking up periodically and sending out tamper message
-            if (flag.tamperIsOpen)
+            if (flag.tamperIsOpen[flag.tamperCount])
             {
                 heartbeatForTamper = true;
             }
+
+        }
+        
+        while (ledPulseCount > 0)
+        {
+            pulseLED(ledPulseCount);
             
-            // re-enable interrupts
-            enable_ext1();
-            
+            ledPulseCount = 0;
         }
     }
 }

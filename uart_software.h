@@ -29,7 +29,8 @@
 
 //#define BAUD 0xFCC0 //2400bps @ 5.99MHz
 //#define BAUD 0xFD10 //2400bps @ 5.414MHz
-#define BAUD 0xFA18 //2400bps @ 10.886MHz
+//#define BAUD 0xFA18 //2400bps @ 10.886MHz
+#define BAUD (65536-MCU_FREQ/3/2400/1)
 
 
 // pin definitions

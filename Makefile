@@ -59,12 +59,10 @@
 
 # Note: try lowest speed for power efficiency on STC15W101 series MCU (pg. 1, sec. 1)
 #MCU_FREQ := 5990000
-#MCU_FREQ := 5414000
 
 # for STC15W104 door sensor model
 MCU_FREQ := 10598000
-
-STACK_SIZE := 24
+STACK_SIZE := 16
 
 # 
 MEMORY_SIZES = \
@@ -91,7 +89,7 @@ SRCS := \
     uart_software.c \
 	main.c
 
-CONSOLE_BAUDRATE := 57600
+CONSOLE_BAUDRATE := 19200
 CONSOLE_PORT := ttyUSB0
 
 ISP_PORT := COM3
