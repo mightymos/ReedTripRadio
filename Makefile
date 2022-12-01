@@ -84,8 +84,7 @@ PROJECT_NAME := door-reed-rf-demo
 
 SRCS := \
     $(HAL_DIR)/delay.c \
-    $(HAL_DIR)/power-hal.c \
-    $(HAL_DIR)/timer-hal.c \
+    $(HAL_DIR)/eeprom-hal.c \
     uart_software.c \
 	main.c
 

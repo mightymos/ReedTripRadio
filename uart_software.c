@@ -5,6 +5,8 @@
 
 #include <STC/15W10x/DIP8.h>
 
+extern void pulseLED(unsigned char repeat);
+
 unsigned char TBUF,RBUF;
 
 __bit TING,RING;
@@ -19,9 +21,8 @@ unsigned char TBIT,RBIT;
 
 //-----------------------------------------
 //Timer interrupt routine for UART
-//void tm0() interrupt 1 using 1
 void tm0() __interrupt 1 __using 1
-{
+{    
   if (RING) {
     if (--RCNT == 0) {
       RCNT = 3; //reset send baudrate counter
@@ -70,13 +71,15 @@ void enable_timer0(void)
 {
     //timer0 in 16-bit auto reload mode
     TMOD = 0x00;
+    
     //timer0 working at 1T mode    
     AUXR = 0x80;
+    
     //initial timer0 and set reload value
     T0L = BAUD & 0xff;
     T0H = BAUD >> 8;
 
-    //tiemr0 start running
+    //timer0 start running
     T0R = 1;
     
     //enable timer0 interrupt
@@ -84,6 +87,30 @@ void enable_timer0(void)
     
     //improve timer0 interrupt priority
     IP1H |= M_PT0;
+}
+
+void disable_timer0(void)
+{
+    //timer0 in 16-bit auto reload mode
+    //TMOD = 0x00;
+    //timer0 working at 12T mode    
+    AUXR &= ~0x80;
+    
+    //timer0 stop running
+    T0R = 0;
+    
+    // clear overflow flag
+    T0IF = 0;
+    
+    //initial timer0 and set reload value
+    T0L = 0x00;
+    T0H = 0x00;
+    
+    //disable timer0 interrupt
+    IE1  &= ~M_ET0;
+    
+    //clear timer0 interrupt priority
+    IP1H &= ~M_PT0;
 }
 
 //-----------------------------------------

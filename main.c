@@ -6,10 +6,12 @@
 
 #include "uart_software.h"
 
-// NOTE: avoid gpio-hal to save RAM, and instead support software UART
+// NOTE: avoid gpio-hal and others to save RAM, and instead support software UART
 #include <delay.h>
-#include <power-hal.h>
-#include <timer-hal.h>
+#include <eeprom-hal.h>
+//#include <gpio-hal.h>
+//#include <power-hal.h>
+//#include <timer-hal.h>
 
 #ifndef MCU_HAS_WAKE_UP_TIMER
     // Shouldn't happen, unless using an STC12.
@@ -37,7 +39,15 @@
 #define RADIO_STARTUP_TIME 120
 
 // milliseconds
-#define SLEEP_TIME 10000
+// maximum is 32768 as per sec. 7.8 power down wake-up special timer
+// highest bit of register will be set to enable wake up timer
+// maximum is 0x7FFF and then highest bit set
+#define SLEEP_TIME_0  5000
+#define SLEEP_TIME_1 10000
+#define SLEEP_TIME_2 20000
+#define SLEEP_TIME_3 30000
+
+
 
 // milliseconds
 #define LED_HIGH_TIME 750
@@ -68,7 +78,7 @@ static const unsigned char tamper_open  = 0x07;
 
 // added to support tamper closed
 // note: if we resend only a generic tamper code (e.g., 0x07) too quickly due to switch press and release
-//       I think the duplicate sends may be discarded
+//       I think the duplicate sends may be discarded at receiver
 static const unsigned char tamper_close = 0x70;
 
 //static const unsigned char debug[RFCODE_LENGTH]  = {0x55, 0xAA, 0x55};
@@ -105,8 +115,9 @@ struct Protocol {
 };
 
 // FIXME: Other protocols are not working with Sonoff Bridge w/ Tasmota so need to investigate
+// FIXME: inverted protocols are not yet supported either
 // changed pulse lengths given in rc-switch project from microseconds to 10 microseconds units
-// because available delay function is delay10us() with hardware abstraction layer
+// because here available delay function is delay10us() with hardware abstraction layer
 static const struct Protocol protocols[] = {
 
   { 35, {  1, 31 }, {  1,  3 }, {  3,  1 }, false },    // protocol 1
@@ -128,7 +139,7 @@ enum {
 };
 
 
-// save switch states in interrupts for use in main loop
+// save switch states checked in interrupts for use in main loop
 struct Flags {
     volatile bool reedInterrupted;
     volatile bool tamperInterrupted;
@@ -140,6 +151,15 @@ struct Flags {
 
 // isOpen arrays are not initialized
 struct Flags flag = {.reedInterrupted = false, .tamperInterrupted = false, .tamperCount = 0, .reedCount = 0};
+
+struct Settings {
+    uint16_t sleepTime;
+    bool heartbeatForTamper;
+    bool heartbeatForReed;
+};
+
+// default is to pick least frequent wake up time and disable radio heartbeats to save power
+struct Settings setting = {.sleepTime = SLEEP_TIME_3, .heartbeatForTamper = false, .heartbeatForReed = false};
 
 
 /*! \brief Brief description.
@@ -235,7 +255,7 @@ void delay10us_wrapper(unsigned int microseconds)
     delay10us(microseconds);
 }
 
-/*! \brief Purpose is to not leave LED on because powering other radio pins may be exceeding port sink/source capability
+/*! \brief Purpose of pulsing is to avoid leaving LED on because simultaneously powering other radio pins may be exceeding port sink/source capability
  *         Brief description continued.
  *
  */
@@ -275,18 +295,165 @@ bool isReedOpen(void)
     return pinState;
 }
 
+unsigned char uart_rx(bool* result)
+{
+    volatile unsigned char rxByte = 0;
+    *result = false;
+    
+    // provided in software UART example
+    if (REND)
+    {
+        // this is shown in the original example
+        // i think we need to access buffer, so index does not get confused
+        // even though we basically just use rxByte to store a single byte
+        buf[r++ & 0x0F] = RBUF;
+        REND = 0;
+        rxByte = buf[(r-1) & 0x0F];
+        *result = true;
+    }
+    
+    return rxByte;
+}
+
+void uart_loop_test(void)
+{
+    volatile unsigned char rxByte = 0;
+    bool result;
+    
+    while(true)
+    {
+        rxByte = uart_rx(&result);
+        
+        if (result)
+        {  
+            // echo back character
+            putc(rxByte);
+        }
+    }
+}
+
+// display current setting and options
+void menu_sleep_display(void)
+{
+    puts("Sleep Time (current): 0x");
+    puthex2(setting.sleepTime >> 8);
+    puthex2(setting.sleepTime);
+    putc('\r');
+    
+    puts("SLEEP_TIME_0: 0x");
+    puthex2(SLEEP_TIME_0 >> 8);
+    puthex2(SLEEP_TIME_0);
+    putc('\r');
+    
+    puts("SLEEP_TIME_1: 0x");
+    puthex2(SLEEP_TIME_1 >> 8);
+    puthex2(SLEEP_TIME_1);
+    putc('\r');
+    
+    puts("SLEEP_TIME_2: 0x");
+    puthex2(SLEEP_TIME_2 >> 8);
+    puthex2(SLEEP_TIME_2);
+    putc('\r');
+    
+    puts("SLEEP_TIME_3: 0x");
+    puthex2(SLEEP_TIME_3 >> 8);
+    puthex2(SLEEP_TIME_3);
+    putc('\r');
+    
+    puts("Choose (0-3)(or q to exit): ");
+    putc('\r');
+}
+
+void menu_sleep_change(const unsigned char rxByte)
+{
+
+    // assign selection
+    switch(rxByte)
+    {
+        case '0':
+            setting.sleepTime = SLEEP_TIME_0;
+            break;
+        case '1':
+            setting.sleepTime = SLEEP_TIME_1;
+            break;
+        case '2':
+            setting.sleepTime = SLEEP_TIME_2;
+            break;
+        case '3':
+            setting.sleepTime = SLEEP_TIME_3;
+            break;
+        default:
+            setting.sleepTime = SLEEP_TIME_0;
+    }
+    
+}
+
+
+void menu_reed_display(void)
+{
+    puts("Reed Heartbeat (current): ");
+    puts(setting.heartbeatForReed ? "enabled" : "disabled");
+    putc('\r');
+    
+    puts("Choose 0 (disabled) or 1 (enabled) (or q to exit): ");
+    putc('\r');
+}
+
+void menu_reed_change(const unsigned char rxByte)
+{
+
+    // assign selection
+    switch(rxByte)
+    {
+        case '0':
+            setting.heartbeatForReed = false;
+            break;
+        case '1':
+            setting.heartbeatForReed = true;
+            break;
+        default:
+            setting.heartbeatForReed = false;
+    }
+    
+}
+
+void menu_tamper_display(void)
+{
+    puts("Tamper Heartbeat (current): ");
+    puts(setting.heartbeatForTamper ? "enabled" : "disabled");
+    putc('\r');
+    
+    puts("Choose 0 (disabled) or 1 (enabled) (or q to exit): ");
+    putc('\r');
+}
+
+void menu_tamper_change(const unsigned char rxByte)
+{
+
+    // assign selection
+    switch(rxByte)
+    {
+        case '0':
+            setting.heartbeatForTamper = false;
+            break;
+        case '1':
+            setting.heartbeatForTamper = true;
+            break;
+        default:
+            setting.heartbeatForTamper = false;
+    }
+    
+}
+
+
 void rfsyncPulse(struct Protocol* protocol)
 {
     // rf sync pulse
     radio_ask_high();
     delay10us_wrapper(protocol->pulseLength * protocol->syncFactor.high);
-    //delay10us_wrapper(35);
-    //delay10us_wrapper(65);
     
     radio_ask_low();
     delay10us_wrapper(protocol->pulseLength * protocol->syncFactor.low);
-    //delay10us_wrapper(1085);
-    //delay10us_wrapper(650);
 }
 
 /*! \brief Description
@@ -312,26 +479,17 @@ void send(struct Protocol* protocol, const unsigned char byte)
         {
             radio_ask_high();
             delay10us_wrapper(protocol->pulseLength * protocol->one.high);
-            //delay10us_wrapper(105);
-            //delay10us_wrapper(130);
             
             radio_ask_low();
             delay10us_wrapper(protocol->pulseLength * protocol->one.low);
-            //delay10us_wrapper(35);
-            //delay10us_wrapper(65);
         }
         else
         {
             radio_ask_high();
             delay10us_wrapper(protocol->pulseLength * protocol->zero.high);
-            //delay10us_wrapper(35);
-            //delay10us_wrapper(65);
             
             radio_ask_low();
             delay10us_wrapper(protocol->pulseLength * protocol->zero.low);
-            //delay10us_wrapper(105);
-            //delay10us_wrapper(130);
-
         }
         
         toSend = toSend << 1;
@@ -353,7 +511,6 @@ void sendRadioPacket(unsigned char rfcode, unsigned char protocol)
     for (index = 0; index < REPEAT_TIMES; index++)
     {
         rfsyncPulse(&protocols[protocol]);
-
 
         // send rf key
         send(&protocols[protocol], guid[0]);
@@ -417,26 +574,21 @@ void main()
 {
     INIT_EXTENDED_SFR();
     
-    // TODO: might allow human to control these later (with tamper switch presses?)
-    volatile bool heartbeatForTamper = false;
-    const volatile bool heartbeatForReed   = false;
-    
     // current radio protocol
     const unsigned char protocolIndex = 0;
     
-    // software uart
-    unsigned char rxByte;
-    
+    // allow possibility to flash multiple pulses
     unsigned char ledPulseCount = 0;
     
     // code pointer for reading microcontroller unique id
     __code unsigned char  *cptr;
     
+    volatile unsigned char rxByte = 0;
+    bool result = false;
     
+    // gpio, strong pull, input only, etc.
     configure_pin_modes();
-    uart_init();
-
-
+    
     // double pulse LED at startup
     pulseLED(2);
     
@@ -444,7 +596,7 @@ void main()
     // and to disallow any transmission
     disable_radio_vdd();
     
-    // datasheet warns against applying pulses to ASK pin while power is disabled
+    // datasheet warns against applying (high) pulses to ASK pin while power is disabled
     radio_ask_low();
     
     // provide a pull up voltage to the tamper switch
@@ -460,10 +612,9 @@ void main()
     guid[0]   = *(cptr + 5);
     guid[1]   = *(cptr + 6);
 
-
-    // enable interrupts
-    enable_ext0();
-    enable_ext1();
+    // software uart
+    uart_init();
+    
     enable_global_interrupts();
 
     // timer used for software serial UART
@@ -479,45 +630,133 @@ void main()
     puts("Protocol: 0x");
     puthex2(protocolIndex);
     putc('\r');
+    
 
-    // Main loop -------------------------------------------------------
-    while (1)
-    {
-        // only enable wake up timer if any heartbeat is enabled
-        if (heartbeatForTamper || heartbeatForReed)
+    
+    // during normal use would insert battery and then close housing, so tamper should be open on power up
+    // if tamper is closed on power up however, assume user wants to enter menu
+    if (!isTamperOpen())
+    {    
+        menu_sleep_display();
+        result = false;
+        while(!result)
         {
-            enablePowerDownWakeUpTimer(millisecondsToWakeUpCount(SLEEP_TIME));
+            rxByte = uart_rx(&result);
+        }
+        
+        putc(rxByte);
+        putc('\r');
+        
+        if (rxByte != 'q')
+        {
+            menu_sleep_change(rxByte);
         }
         
         
+        menu_reed_display();
+        result = false;
+        while(!result)
+        {
+            rxByte = uart_rx(&result);
+        }
+        
+        putc(rxByte);
+        putc('\r');
+        
+        if (rxByte != 'q')
+        {
+            menu_reed_change(rxByte);
+        }
+        
+        menu_tamper_display();
+        result = false;
+        while(!result)
+        {
+            rxByte = uart_rx(&result);
+        }
+        
+        putc(rxByte);
+        putc('\r');
+        
+        if (rxByte != 'q')
+        {
+            menu_tamper_change(rxByte);
+        }
+    }
+    
+    // helps to indicate to user we are past menus
+    // and that no more serial output should be expected
+    puts("Disabling UART...");
+    putc('\r');
+    
+    // probably should allow serial bytes to finish sending before disabling timer
+    delay1ms(CONTROLLER_STARTUP_TIME);
+    
+    // disable uart
+    // FIXME: this switches from 1T to 12T system clock, need to consider implications
+    disable_timer0();
+    
+    // enable tamper and reed interrupts
+    enable_ext0();
+    enable_ext1();
+
+    // Main loop -------------------------------------------------------
+    while (true)
+    {
+        // only enable wake up timer if any heartbeat is enabled
+        if (setting.heartbeatForTamper || setting.heartbeatForReed)
+        {
+            // DEBUG: need to test out HAL implementation a little more
+            //enablePowerDownWakeUpTimer(millisecondsToWakeUpCount(setting.sleepTime));
+            // set wake up count
+            WKTC = setting.sleepTime;
+            
+            // enable wake up timer
+            WKTC |= 0x8000;
+        }
+        
+        // do not go to sleep if unsent radio packets are available
         if ((flag.reedCount == 0) && (flag.tamperCount == 0))
         {
             // this will either wake up due to timer (if enabled) or interrupt
-            enterPowerDownMode();
+            PCON |= M_PD;
+            NOP();
+            NOP();
+            
+            // need to disable wake up timer?
+            WKTC &= ~0x8000;
+            
+            //putc('D');
         }
         
-        
-        // FIXME: implement receive with software serial UART
-        // provided in software UART example
-        
-        
-        // 
-        // force sending out periodic messages if tamper open detected by interrupt routine
-        if (heartbeatForTamper)
+
+        // force sending out periodic messages to indicate tamper state
+        if (setting.heartbeatForTamper)
         {
-            // keep checking if tamper is open, if not stop sending out periodic messages
+            // send different keys depending on pushbutton switch state
             if (isTamperOpen())
             {            
                 sendRadioPacket(tamper_open, protocolIndex);
-                
+            } else {
+                sendRadioPacket(tamper_close, protocolIndex);
+            }
                 // single pulse LED
                 ledPulseCount = 1;
-                
-                //pulseLED(1);
-                //putc('H');
+        }
+        
+        if (setting.heartbeatForReed)
+        {
+            if(isReedOpen())
+            {
+                sendRadioPacket(reed_open, protocolIndex);
             } else {
-                heartbeatForTamper = false;
+                sendRadioPacket(reed_close, protocolIndex);
             }
+            
+            // notice that we do not increment count
+            // so in effect, multiple radio packets could be sent and we just pulse once
+            // and that is okay so that we save battery and avoid long unneeded delays
+            ledPulseCount = 1;
         }
         
 
@@ -527,11 +766,7 @@ void main()
             // single pulse LED
             ledPulseCount = 1;
             
-            //pulseLED(1);
-            //putc('R');
-            //puthex(flag.reedCount);
-            
-            //
+            // we might have multiple reed events in quick succession
             flag.reedCount--;
             
             if(flag.reedIsOpen[flag.reedCount])
@@ -540,21 +775,16 @@ void main()
             } else {
                 sendRadioPacket(reed_close, protocolIndex);
             }
-            
         }
  
 
-        // it is easier to miss tamper press releases, so need to count and handle quickly
+        // it is difficult to capture tamper press releases, so need to count and handle quickly
         while (flag.tamperCount > 0)
         {
             // single pulse LED
             ledPulseCount = 1;
             
-            //pulseLED(1);
-            //putc('T');
-            //puthex(flag.tamperCount);
-            
-                        //
+            //
             flag.tamperCount--;
             
             if(flag.tamperIsOpen[flag.tamperCount])
@@ -563,21 +793,18 @@ void main()
             } else {
                 sendRadioPacket(tamper_close, protocolIndex);
             }
-            
-            
-            // if tamper is open, begin waking up periodically and sending out tamper message
-            if (flag.tamperIsOpen[flag.tamperCount])
-            {
-                heartbeatForTamper = true;
-            }
-
         }
         
+        // blink LED here after sending out radio packets as quickly as possible after wakeup
         while (ledPulseCount > 0)
         {
             pulseLED(ledPulseCount);
             
-            ledPulseCount = 0;
+            // we have the potential to pulse LED multiple times
+            // but usually we just pulse once
+            ledPulseCount--;
         }
+        
+
     }
 }

@@ -42,6 +42,8 @@ extern unsigned char TBUF,RBUF;
 extern __bit TING,RING;
 extern __bit TEND,REND;
 extern unsigned char t, r;
+
+// needs to have buffer size 16 so that wrap around for index works (e.g., buf[r & 0x0F])
 extern unsigned char buf[16];
 
 
@@ -54,6 +56,7 @@ void tm0() __interrupt 1 __using 1;
 //initial UART module variable
 void uart_init();
 void enable_timer0(void);
+void disable_timer0(void);
 
 void putc(const char c);
 void puts(const char *s);
