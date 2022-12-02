@@ -193,14 +193,24 @@ void disable_radio_vdd(void)
 }
 
 // TODO: are these functions inlined by compiler automatically?
-void radio_ask_high(void)
+void radio_ask_high(bool inverted)
 {
-    RADIO_ASK = 1;
+    if (inverted)
+    {
+        RADIO_ASK = 0;
+    } else {
+        RADIO_ASK = 1;
+    }
 }
 
-void radio_ask_low(void)
+void radio_ask_low(bool inverted)
 {
-    RADIO_ASK = 0;
+    if (inverted)
+    {
+        RADIO_ASK = 1;
+    } else {
+        RADIO_ASK = 0;
+    }
 }
 
 // led is controlled by transistor which essentially inverts pin output
@@ -309,9 +319,9 @@ unsigned char uart_rx(bool* result)
         // this is shown in the original example
         // i think we need to access buffer, so index does not get confused
         // even though we basically just use rxByte to store a single byte
-        buf[r++ & 0x0F] = RBUF;
+        buf[r++ & 0x08] = RBUF;
         REND = 0;
-        rxByte = buf[(r-1) & 0x0F];
+        rxByte = buf[(r-1) & 0x08];
         *result = true;
     }
     
@@ -474,11 +484,23 @@ void menu_tamper_change(const unsigned char rxByte)
 
 void rfsyncPulse(struct Protocol* protocol)
 {
+    // void (*first_level)(void);
+    // void (*second_level)(void);
+    
+    // if (protocol->invertedSignal)
+    // {
+        // first_level  = &radio_ask_low;
+        // second_level = &radio_ask_high;
+    // } else {
+        // first_level  = &radio_ask_high;
+        // second_level = &radio_ask_low;
+    // }
+    
     // rf sync pulse
-    radio_ask_high();
+    radio_ask_high(protocol->invertedSignal);
     delay10us_wrapper(protocol->pulseLength * protocol->syncFactor.high);
     
-    radio_ask_low();
+    radio_ask_low(protocol->invertedSignal);
     delay10us_wrapper(protocol->pulseLength * protocol->syncFactor.low);
 }
 
@@ -496,6 +518,18 @@ void send(struct Protocol* protocol, const unsigned char byte)
     
     // byte for shifting
     volatile unsigned char toSend = byte;
+    
+    // void (*first_level)(void);
+    // void (*second_level)(void);
+    
+    // if (protocol->invertedSignal)
+    // {
+        // first_level  = &radio_ask_low;
+        // second_level = &radio_ask_high;
+    // } else {
+        // first_level  = &radio_ask_high;
+        // second_level = &radio_ask_low;
+    // }
 
     // Repeat until all bits sent
     for(i = 0; i < numBits; i++)
@@ -503,18 +537,18 @@ void send(struct Protocol* protocol, const unsigned char byte)
         // Check bit value, process logic one
         if((toSend & mask) == mask)
         {
-            radio_ask_high();
+            radio_ask_high(protocol->invertedSignal);
             delay10us_wrapper(protocol->pulseLength * protocol->one.high);
             
-            radio_ask_low();
+            radio_ask_low(protocol->invertedSignal);
             delay10us_wrapper(protocol->pulseLength * protocol->one.low);
         }
         else
         {
-            radio_ask_high();
+            radio_ask_high(protocol->invertedSignal);
             delay10us_wrapper(protocol->pulseLength * protocol->zero.high);
             
-            radio_ask_low();
+            radio_ask_low(protocol->invertedSignal);
             delay10us_wrapper(protocol->pulseLength * protocol->zero.low);
         }
         
@@ -522,7 +556,7 @@ void send(struct Protocol* protocol, const unsigned char byte)
     }
 }
 
-void sendRadioPacket(unsigned char rfcode, unsigned char protocol)
+void sendRadioPacket(const unsigned char rfcode, const unsigned char protocol)
 {
     unsigned char index;
     
@@ -625,7 +659,7 @@ void main()
     disable_radio_vdd();
     
     // datasheet warns against applying (high) pulses to ASK pin while power is disabled
-    radio_ask_low();
+    radio_ask_low(false);
     
     // provide a pull up voltage to the tamper switch
     enable_tamper_pullup();

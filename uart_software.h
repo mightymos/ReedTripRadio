@@ -43,8 +43,8 @@ extern __bit TING,RING;
 extern __bit TEND,REND;
 extern unsigned char t, r;
 
-// needs to have buffer size 16 so that wrap around for index works (e.g., buf[r & 0x0F])
-extern unsigned char buf[16];
+// when indexing take care to apply wrap around equivalent to buffer size (e.g., buf[r & 0x0F] for size 16)
+extern unsigned char buf[8];
 
 
 //-----------------------------------------

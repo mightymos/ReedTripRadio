@@ -12,7 +12,7 @@ unsigned char TBUF,RBUF;
 __bit TING,RING;
 __bit TEND,REND;
 unsigned char t, r;
-unsigned char buf[16];
+unsigned char buf[8];
 
 // internal
 unsigned char TDAT,RDAT;
