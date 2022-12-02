@@ -4,9 +4,9 @@
  */
 #include "project-defs.h"
 
+// NOTE: avoid gpio-hal and others to save RAM, and instead support software UART
 #include "uart_software.h"
 
-// NOTE: avoid gpio-hal and others to save RAM, and instead support software UART
 #include <delay.h>
 #include <eeprom-hal.h>
 //#include <gpio-hal.h>
@@ -135,7 +135,7 @@ static const struct Protocol protocols[] = {
 };
 
 enum {
-   numProto = sizeof(protocols) / sizeof(protocols[0])
+   numProtocols = sizeof(protocols) / sizeof(protocols[0])
 };
 
 
@@ -153,13 +153,16 @@ struct Flags {
 struct Flags flag = {.reedInterrupted = false, .tamperInterrupted = false, .tamperCount = 0, .reedCount = 0};
 
 struct Settings {
+    unsigned char eepromWritten;
+    unsigned char protocol;
     uint16_t sleepTime;
     bool heartbeatForTamper;
     bool heartbeatForReed;
 };
 
 // default is to pick least frequent wake up time and disable radio heartbeats to save power
-struct Settings setting = {.sleepTime = SLEEP_TIME_3, .heartbeatForTamper = false, .heartbeatForReed = false};
+// convention with eeprom is often that uninitizlied is 0xff
+struct Settings setting = {.eepromWritten = 0xFF, .protocol = 0, .sleepTime = SLEEP_TIME_3, .heartbeatForTamper = false, .heartbeatForReed = false};
 
 
 /*! \brief Brief description.
@@ -330,6 +333,29 @@ void uart_loop_test(void)
             putc(rxByte);
         }
     }
+}
+
+void menu_protocol_display(void)
+{
+    puts("Protocol (current): 0x");
+    puthex2(setting.protocol);
+    putc('\r');
+    
+    puts("Choose 0x0 - 0x");
+    puthex(numProtocols - 1);
+    puts(" (in single character of hex) (or q to exit): ");
+    putc('\r');
+}
+
+void menu_protocol_change(const unsigned char rxByte)
+{
+    const unsigned char decimal = rxByte - '0';
+
+    if (decimal < numProtocols)
+    {
+        setting.protocol = decimal;
+    }
+    
 }
 
 // display current setting and options
@@ -574,17 +600,19 @@ void main()
 {
     INIT_EXTENDED_SFR();
     
-    // current radio protocol
-    const unsigned char protocolIndex = 0;
-    
     // allow possibility to flash multiple pulses
     unsigned char ledPulseCount = 0;
     
     // code pointer for reading microcontroller unique id
     __code unsigned char  *cptr;
     
+    // used to read from software serial port
     volatile unsigned char rxByte = 0;
     bool result = false;
+
+    
+    static uint8_t buffer[8];
+
     
     // gpio, strong pull, input only, etc.
     configure_pin_modes();
@@ -623,20 +651,48 @@ void main()
     // demonstrate that software serial UART is working
     puts("Startup...");
     putc('\r');
+    puts("Version: ");
+    putc('\r');
     puts(__DATE__);
     putc('\r');
     puts(__TIME__);
     putc('\r');
-    puts("Protocol: 0x");
-    puthex2(protocolIndex);
-    putc('\r');
     
-
+    // read bytes
+    eepromReadBlock(0x00, buffer, 5);
     
-    // during normal use would insert battery and then close housing, so tamper should be open on power up
+    // if eeprom has been written to previously, reload settings from those values
+    // otherwise startup initialized values will remain in struct
+    // (unless we change settings in menus next)
+    if (buffer[0] == 0xAA)
+    {
+        // fill struct in ram with settings
+        setting.eepromWritten = buffer[0];
+        setting.protocol = buffer[1];
+        setting.sleepTime = (buffer[2] << 8) | buffer[3];
+        setting.heartbeatForTamper = buffer[4];
+        setting.heartbeatForReed   = buffer[5];
+    }
+    
+    // during normal use human would insert battery and then close housing, so tamper should be open on power up
     // if tamper is closed on power up however, assume user wants to enter menu
     if (!isTamperOpen())
-    {    
+    {   
+        menu_protocol_display();
+        result = false;
+        while(!result)
+        {
+            rxByte = uart_rx(&result);
+        }
+        
+        putc(rxByte);
+        putc('\r');
+        
+        if (rxByte != 'q')
+        {
+            menu_protocol_change(rxByte);
+        }
+        
         menu_sleep_display();
         result = false;
         while(!result)
@@ -682,6 +738,20 @@ void main()
         {
             menu_tamper_change(rxByte);
         }
+        
+        // store settings in eeprom
+        buffer[0] = 0xAA;
+        buffer[1] = setting.protocol;
+        buffer[2] = setting.sleepTime >> 8;
+        buffer[3] = setting.sleepTime & 0xFF;
+        buffer[4] = setting.heartbeatForTamper;
+        buffer[5] = setting.heartbeatForReed;
+        
+        // FIXME: erase required prior to write?
+        eepromErasePage(0x00);
+        
+        // write settings
+        eepromWriteBlock(0x00, buffer, 6);
     }
     
     // helps to indicate to user we are past menus
@@ -736,9 +806,9 @@ void main()
             // send different keys depending on pushbutton switch state
             if (isTamperOpen())
             {            
-                sendRadioPacket(tamper_open, protocolIndex);
+                sendRadioPacket(tamper_open, setting.protocol);
             } else {
-                sendRadioPacket(tamper_close, protocolIndex);
+                sendRadioPacket(tamper_close, setting.protocol);
             }
                 // single pulse LED
                 ledPulseCount = 1;
@@ -748,9 +818,9 @@ void main()
         {
             if(isReedOpen())
             {
-                sendRadioPacket(reed_open, protocolIndex);
+                sendRadioPacket(reed_open, setting.protocol);
             } else {
-                sendRadioPacket(reed_close, protocolIndex);
+                sendRadioPacket(reed_close, setting.protocol);
             }
             
             // notice that we do not increment count
@@ -771,9 +841,9 @@ void main()
             
             if(flag.reedIsOpen[flag.reedCount])
             {
-                sendRadioPacket(reed_open, protocolIndex);
+                sendRadioPacket(reed_open, setting.protocol);
             } else {
-                sendRadioPacket(reed_close, protocolIndex);
+                sendRadioPacket(reed_close, setting.protocol);
             }
         }
  
@@ -789,9 +859,9 @@ void main()
             
             if(flag.tamperIsOpen[flag.tamperCount])
             {
-                sendRadioPacket(tamper_open, protocolIndex);
+                sendRadioPacket(tamper_open, setting.protocol);
             } else {
-                sendRadioPacket(tamper_close, protocolIndex);
+                sendRadioPacket(tamper_close, setting.protocol);
             }
         }
         
