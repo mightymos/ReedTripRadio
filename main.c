@@ -484,18 +484,6 @@ void menu_tamper_change(const unsigned char rxByte)
 
 void rfsyncPulse(struct Protocol* protocol)
 {
-    // void (*first_level)(void);
-    // void (*second_level)(void);
-    
-    // if (protocol->invertedSignal)
-    // {
-        // first_level  = &radio_ask_low;
-        // second_level = &radio_ask_high;
-    // } else {
-        // first_level  = &radio_ask_high;
-        // second_level = &radio_ask_low;
-    // }
-    
     // rf sync pulse
     radio_ask_high(protocol->invertedSignal);
     delay10us_wrapper(protocol->pulseLength * protocol->syncFactor.high);
@@ -518,18 +506,6 @@ void send(struct Protocol* protocol, const unsigned char byte)
     
     // byte for shifting
     volatile unsigned char toSend = byte;
-    
-    // void (*first_level)(void);
-    // void (*second_level)(void);
-    
-    // if (protocol->invertedSignal)
-    // {
-        // first_level  = &radio_ask_low;
-        // second_level = &radio_ask_high;
-    // } else {
-        // first_level  = &radio_ask_high;
-        // second_level = &radio_ask_low;
-    // }
 
     // Repeat until all bits sent
     for(i = 0; i < numBits; i++)
@@ -709,7 +685,7 @@ void main()
     }
     
     // during normal use human would insert battery and then close housing, so tamper should be open on power up
-    // if tamper is closed on power up however, assume user wants to enter menu
+    // if tamper is closed on power up however, assume user wants to enter menu for viewing/changing settings
     if (!isTamperOpen())
     {   
         menu_protocol_display();
@@ -793,7 +769,7 @@ void main()
     puts("Disabling UART...");
     putc('\r');
     
-    // probably should allow serial bytes to finish sending before disabling timer
+    // delay because we probably should allow serial bytes to finish sending before disabling timer
     delay1ms(CONTROLLER_STARTUP_TIME);
     
     // disable uart
@@ -822,7 +798,7 @@ void main()
         // do not go to sleep if unsent radio packets are available
         if ((flag.reedCount == 0) && (flag.tamperCount == 0))
         {
-            // this will either wake up due to timer (if enabled) or interrupt
+            // this will either wake up in the future due to timer (if enabled) or due to interrupt
             PCON |= M_PD;
             NOP();
             NOP();
@@ -899,7 +875,7 @@ void main()
             }
         }
         
-        // blink LED here after sending out radio packets as quickly as possible after wakeup
+        // blink LED here after sending out radio packets as quickly as possible following wakeup
         while (ledPulseCount > 0)
         {
             pulseLED(ledPulseCount);
