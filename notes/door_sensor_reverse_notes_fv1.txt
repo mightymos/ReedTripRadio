@@ -1,0 +1,108 @@
+############################################################################
+# 12/4/2022
+############################################################################
+Ultimately we do not really have a need to reverse the original radio protcol/timings.
+We can just use the protocols provided by the rc-switch project.
+
+This ended up being the most useful description for encoding data:
+https://github.com/Portisch/RF-Bridge-EFM8BB1/wiki/Decode-0xB1-sniffed-data
+
+############################################################################
+# 10/22/2022
+############################################################################
+
+Circuit board with GOLD dot (tamper trigger)
+
+17:29:34.240 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T17:29:34","RfRaw":{"Data":"AAA436E201AE053280650755"}}
+17:29:35.059 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T17:29:35","RfRaw":{"Data":"AAA436CE01D6057880650755"}}
+17:29:45.819 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T17:29:45","RfRaw":{"Data":"AAA436E2019A053280650755"}}
+17:29:46.635 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T17:29:46","RfRaw":{"Data":"AAA436CE01D6058280650755"}}
+17:30:07.662 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T17:30:07","RfRaw":{"Data":"AAA4374601A4053280650755"}}
+17:30:08.481 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T17:30:08","RfRaw":{"Data":"AAA436CE01E0058280650755"}}
+17:30:48.850 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T17:30:48","RfRaw":{"Data":"AAA4371401B8053C80650755"}}
+17:30:49.669 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T17:30:49","RfRaw":{"Data":"AAA436D801D6058280650755"}}
+17:30:58.382 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T17:30:58","RfRaw":{"Data":"AAA436EC01AE053280650755"}}
+17:30:59.200 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T17:30:59","RfRaw":{"Data":"AAA436D801D6058280650755"}}
+
+
+(reed switch close and then open)
+17:37:15.041 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T17:37:15","RfRaw":{"Data":"AAA436EC017C052880650E55"}}
+17:37:15.862 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T17:37:15","RfRaw":{"Data":"AAA436CE01CC055080650E55"}}
+17:37:23.246 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T17:37:23","RfRaw":{"Data":"AAA436CE01B8051480650A55"}}
+17:37:24.064 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T17:37:24","RfRaw":{"Data":"AAA436C401CC055A80650A55"}}
+
+
+Circuit board with BLUE DOT (radio never seemed to work, even with stock firmware)
+
+############################################################################
+# 10/21/2022
+############################################################################
+
+Circuit board with RED dot
+
+01:08:05.867 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T01:08:05","RfRaw":{"Data":"AAA436D801C2054616E00A55"}}
+01:08:06.750 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T01:08:06","RfRaw":{"Data":"AAA436CE01FE056416E00A55"}}
+01:08:10.112 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T01:08:10","RfRaw":{"Data":"AAA436EC0186053216E00E55"}}
+01:08:10.929 MQT: tele/tasmota_4339CA/RESULT = {"Time":"2022-10-22T01:08:10","RfRaw":{"Data":"AAA4370001CC055016E00E55"}}
+
+
+############################################################################
+# 10/11/2022
+############################################################################
+
+Explains how to flash user flash and eeprom/isp:
+https://github.com/grigorig/stcgal/issues/58
+
+Details of flashing eeprom:
+https://github.com/grigorig/stcgal/issues/26
+
+
+############################################################################
+# 10/10/2022
+############################################################################
+
+Seemingly most useful radio protocol description yet:
+https://github.com/Portisch/RF-Bridge-EFM8BB1/wiki/Decode-0xB1-sniffed-data
+
+
+############################################################################
+# 9/15/2022
+############################################################################
+https://www.reddit.com/r/embedded/comments/vj77z2/using_stc_8051_mcu_with_sdcc/
+https://github.com/area-8051/uni-STC
+
+https://github.com/area-8051/stcgal-patched
+
+
+############################################################################
+# 9/7/2022
+############################################################################
+$ stcgal -p COM3
+Waiting for MCU, please cycle power: done
+Protocol detected: stc15
+Target model:
+  Name: STC15W101
+  Magic: F2A1
+  Code flash: 1.0 KB
+  EEPROM flash: 4.0 KB
+Target frequency: 11.075 MHz
+Target BSL version: 7.2.5T
+Target wakeup frequency: 36.800 KHz
+Target options:
+  reset_pin_enabled=False
+  clock_source=internal
+  clock_gain=high
+  watchdog_por_enabled=False
+  watchdog_stop_idle=True
+  watchdog_prescale=256
+  low_voltage_reset=True
+  low_voltage_threshold=3
+  eeprom_lvd_inhibit=True
+  eeprom_erase_enabled=False
+  bsl_pindetect_enabled=False
+  por_reset_delay=long
+  rstout_por_state=high
+  uart2_passthrough=False
+  uart2_pin_mode=normal
+  cpu_core_voltage=low
+Disconnected!
