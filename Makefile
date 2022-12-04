@@ -56,11 +56,7 @@
 #   make clean
 
 # Target MCU settings --------------------------------------------------
-
-# Note: try lowest speed for power efficiency on STC15W101 series MCU (pg. 1, sec. 1)
-#MCU_FREQ := 5990000
-
-# for STC15W104 door sensor model
+# for STC15W104 door sensor
 MCU_FREQ := 10598000
 STACK_SIZE := 16
 
@@ -94,6 +90,6 @@ CONSOLE_PORT := ttyUSB0
 ISP_PORT := COM3
 
 # Boilerplate rules ----------------------------------------------------
-include $(MAKE_DIR)/1-settings.mk
+include $(MAKE_DIR)/1-mcu-settings.mk
 -include $(DEP_FILE)
-include $(MAKE_DIR)/2-rules.mk
+include $(MAKE_DIR)/2-mcu-rules.mk
