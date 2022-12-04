@@ -11,8 +11,11 @@ STC processors do not allow read/verify of written firmware so open source alter
 
 Boards contain a header that may be populated with pins labeled with G (ground), T (transmit), and R (receive) for flashing.
 
-### Receiver Hardware
-[Sonoff RF Bridge 433](https://tasmota.github.io/docs/devices/Sonoff-RF-Bridge-433/ "Sonoff Bridge 433 MHz")
+### Installation
+
+
+### Receiver Hardware (firmwares)
+[Sonoff RF Bridge 433 (tasmota)](https://tasmota.github.io/docs/devices/Sonoff-RF-Bridge-433/ "Sonoff Bridge 433 MHz")
 
 [Sonoff RF Bridge 433 (espurna)](https://github.com/xoseperez/espurna "ESPurna")
 
@@ -21,6 +24,7 @@ Also ESPurna can learn unique sensor codes.
 
 [Portisch](https://github.com/Portisch/RF-Bridge-EFM8BB1 "Portisch")
 Some Sonoff Bridge(s) contain an onboard EFM8BB1 which can additionally be flashed to support more radio protocols.
+I originally thought this would be helpful but apparently most rc-switch protocols are not supported.
 
 
 Flashing tool:
@@ -29,7 +33,9 @@ https://github.com/area-8051/stcgal-patched
 Firmware uses hardware abstraction layer (HAL):
 https://github.com/area-8051/uni-STC
 
-| Proposed features | original or added | status |
+### Features
+
+| Proposed | original or added | status |
 | ------------- | ------------- | ------------- |
 | Transmit on reed switch open/close (interrupt)  | original  | DONE |
 | Transmit on tamper switch open/close (interrupt)  | original  | DONE |
