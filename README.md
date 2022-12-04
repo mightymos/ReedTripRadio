@@ -1,20 +1,15 @@
 ### Description
 This is an alternative firmware for wireless 433MHz magnetic door/window reed sensors.
 
-STC15W104 are 8051 based processors + SYN115 radio transmitter.
-
+STC15W104 are 8051 based processors + SYN115 radio transmitter.  
 '104 model has 4KB flash space and board also has a tamper detect switch which is cool.
 
-Some sensors have STC15W101 but with only 1KB flash.
-
-Also some sensors purchased did not have tamper switch installed.
-
-Anyway 1KB flash would not support software serial or hardware abstraction layer (HAL).
-
+Some sensors have STC15W101 but with only 1KB flash.  
+Also some sensors purchased did not have tamper switch installed.  
+Anyway 1KB flash would not support software serial or hardware abstraction layer (HAL).  
 One possibility however is to use emulated EEPROM area for code space.
 
-STC processors do not allow read/verify of written firmware.
-
+Additionally STC processors do not allow read/verify of written firmware.  
 Therefore open source alternative is needed to confirm program behavior.
 
 Boards contain a header that may be populated with pins labeled with G (ground), T (transmit), and R (receive) for flashing with USB to UART module.
