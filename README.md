@@ -37,20 +37,23 @@ Boards contain a header that may be populated with pins labeled with G (ground),
 ![alt text](/photos/hookup_example.jpg "Wireless 433 MHz Door Sensor")
 
 ### Installation
-Clone the flash tool and then place in convenient location (e.g., home directory).
+```
+cd ~/
 
-  Then clone uni-STC (HAL), clone this repository, and place in the demos folder of uni-stc.
-  
-  Finally change to demo folder.
-  
-  make
-  ~/stcgal-patched/stcgal.py -p COM3 -b 19200 build/door-reed-rf-demo.ihx
+# flashing tool
+git clone https://github.com/area-8051/stcgal-patched.git
 
-Flashing tool:
-https://github.com/area-8051/stcgal-patched
+# hardware abstraction layer for stc
+git clone https://github.com/area-8051/uni-STC.git
+cd uni-STC/demos/
 
-Firmware uses hardware abstraction layer (HAL):
-https://github.com/area-8051/uni-STC
+# this repository
+git clone https://github.com/mightymos/ReedTripRadio.git
+make
+
+# make file should be used to flash in the future
+~/stcgal-patched/stcgal.py -p COM3 -b 19200 build/door-reed-rf-demo.ihx
+```
 
 ### Receiver Hardware
 Receiving radio packets requires a receiver. Options include the Sonoff RF Bridge 433 MHz and recommend flashing with open source firmware [Tasmota](https://tasmota.github.io/docs/devices/Sonoff-RF-Bridge-433/ "Tasmota") or [ESPurna](https://github.com/xoseperez/espurna "ESPurna"). ESPurna is nice because it treats wireless sensors as "virtual" sensors (show up as permanent switch entities in Home Assistant). Also ESPurna can learn/remember unique sensor codes.
@@ -58,3 +61,8 @@ Receiving radio packets requires a receiver. Options include the Sonoff RF Bridg
 Some Sonoff Bridge(s) contain an onboard EFM8BB1 which can additionally be flashed to support more radio protocols with [Portisch](https://github.com/Portisch/RF-Bridge-EFM8BB1 "Portisch"). I originally thought this would be helpful but apparently most rc-switch protocols are not supported.
 
 You can also use a generic 433 MHz receiver and controller flashed with [rc-switch](https://github.com/sui77/rc-switch).
+
+### Wireless door/window sensor
+| Source | Link | Price (USD) |
+| ------------- | ------------- | ------------- |
+| aliexpress  | https://www.aliexpress.us/item/3256803337417240.html?spm=a2g0o.order_list.order_list_main.23.7cf8180213pdH3&gatewayAdapt=glo2usa&_randl_shipto=US  | $4.09 |
