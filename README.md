@@ -1,3 +1,4 @@
+### Description
 Alternative firmware for wireless 433MHz magnetic door/window reed sensors.
 
 STC15W104 are 8051 based processors + SYN115 radio transmitter.
@@ -10,18 +11,17 @@ STC processors do not allow read/verify of written firmware so open source alter
 
 Boards contain a header that may be populated with pins labeled with G (ground), T (transmit), and R (receive) for flashing.
 
-For receiving radio messages recommend:
-Sonoff Bridge 433 MHz
-https://tasmota.github.io/docs/devices/Sonoff-RF-Bridge-433/
+### Receiver Hardware
+[Sonoff RF Bridge 433](https://tasmota.github.io/docs/devices/Sonoff-RF-Bridge-433/ "Sonoff Bridge 433 MHz")
 
-Another alternative firmware for the Sonoff Bridge is:
-https://github.com/xoseperez/espurna
+[Sonoff RF Bridge 433 (espurna)](https://github.com/xoseperez/espurna "ESPurna")
 
 ESPurna is nice because it treats wireless sensors as "virtual" sensors (show up as permanent switch entities in Home Assistant).
 Also ESPurna can learn unique sensor codes.
 
-Some Sonoff Bridge contain an onboard EFM8BB1 which can additionally be flashed to support more radio protocols:
-https://github.com/Portisch/RF-Bridge-EFM8BB1
+[Portisch](https://github.com/Portisch/RF-Bridge-EFM8BB1 "Portisch")
+Some Sonoff Bridge(s) contain an onboard EFM8BB1 which can additionally be flashed to support more radio protocols.
+
 
 Flashing tool:
 https://github.com/area-8051/stcgal-patched
@@ -29,22 +29,22 @@ https://github.com/area-8051/stcgal-patched
 Firmware uses hardware abstraction layer (HAL):
 https://github.com/area-8051/uni-STC
 
-Proposed features (some added as compared with original firmware):
-[01] Transmit on reed switch open/close (interrupt)                                 (DONE)
-[02] Transmit on tamper switch open/close (interrupt)                               (DONE)
-[03] Manage power modes                                                             (DONE)
-[04] Support inverted protocols                                                     (DONE)
-[05] Ability to select any supported rc-switch transmission protocol                (DONE)
-[06] "Heart beat" mode for periodic transmission                                    (DONE)
-[07] Adjustable LED blink behavior                                                  (TODO)
-[08] Adjustable sleep behavior                                                      (DONE)
-[09] User configuration/input with tamper switch press(es) or serial bytes          (DONE)
-[10] Add tamper closed key                                                          (DONE)
-[11] Add tamper "trip" mode                                                         (TODO)
-[11] Store settings in EEPROM                                                       (DONE)
-[12] Send information over radio (e.g., settings?, battery?)                        (TODO)
-[13] Compare power usage to original firmware                                       (TODO)
-[14] Test transmission protocols 2-12                                               (TODO)
+| Proposed features | original or added | status |
+| ------------- | ------------- | ------------- |
+| Transmit on reed switch open/close (interrupt)  | original  | DONE |
+| Transmit on tamper switch open/close (interrupt)  | original  | DONE |
+| Manage power modes  | original  | DONE |
+| Support inverted protocols  | added  | DONE |
+| Ability to select any supported rc-switch transmission protocol  | added  | DONE |
+| "Heart beat" mode for periodic transmission   | added  | DONE |
+| Adjustable LED blink behavior   | added  | TODO |
+| Adjustable sleep behavior  | added  | DONE |
+| User configuration/input with tamper switch press(es) or serial bytes  | added  | DONE |
+| Add tamper closed key  | added  | DONE |
+| Add tamper "trip" mode   | added  | TODO |
+| Store settings in EEPROM  | added  | DONE |
+| Send information over radio (e.g., settings?, battery?)  | added  | TODO |
+| Compare power usage to original firmware  | added  | TODO |
+| Test transmission protocols 2-12  | added  | TODO |
 
-
-![Hookup Example](/photos/hookup_example.jpg?raw=true "Wireless 433 MHz Door Sensor)
+![alt text](/photos/hookup_example.jpg "Wireless 433 MHz Door Sensor")
