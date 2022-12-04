@@ -1,37 +1,23 @@
 ### Description
-Alternative firmware for wireless 433MHz magnetic door/window reed sensors.
+This is an firmware for wireless 433MHz magnetic door/window reed sensors.
 
 STC15W104 are 8051 based processors + SYN115 radio transmitter.
+
 '104 model has 4KB flash space and board also has a tamper detect switch which is cool.
 
-Some sensors have STC15W101 but with only 1KB flash. Also some sensors purchased did not have tamper switch.
-However 1KB flash would not support hardware abstraction layer (unless emulated EEPROM area can be used for code space).
+Some sensors have STC15W101 but with only 1KB flash.
 
-STC processors do not allow read/verify of written firmware so open source alternative is needed to confirm program behavior.
+Also some sensors purchased did not have tamper switch installed.
 
-Boards contain a header that may be populated with pins labeled with G (ground), T (transmit), and R (receive) for flashing.
+Anyway 1KB flash would not support software serial or hardware abstraction layer (HAL).
 
-### Installation
+One possibility however is to use emulated EEPROM area for code space.
 
+STC processors do not allow read/verify of written firmware.
 
-### Receiver Hardware (firmwares)
-[Sonoff RF Bridge 433 (tasmota)](https://tasmota.github.io/docs/devices/Sonoff-RF-Bridge-433/ "Sonoff Bridge 433 MHz")
+Therefore open source alternative is needed to confirm program behavior.
 
-[Sonoff RF Bridge 433 (espurna)](https://github.com/xoseperez/espurna "ESPurna")
-
-ESPurna is nice because it treats wireless sensors as "virtual" sensors (show up as permanent switch entities in Home Assistant).
-Also ESPurna can learn unique sensor codes.
-
-[Portisch](https://github.com/Portisch/RF-Bridge-EFM8BB1 "Portisch")
-Some Sonoff Bridge(s) contain an onboard EFM8BB1 which can additionally be flashed to support more radio protocols.
-I originally thought this would be helpful but apparently most rc-switch protocols are not supported.
-
-
-Flashing tool:
-https://github.com/area-8051/stcgal-patched
-
-Firmware uses hardware abstraction layer (HAL):
-https://github.com/area-8051/uni-STC
+Boards contain a header that may be populated with pins labeled with G (ground), T (transmit), and R (receive) for flashing with USB to UART module.
 
 ### Features
 
@@ -54,3 +40,26 @@ https://github.com/area-8051/uni-STC
 | Test transmission protocols 2-12  | added  | TODO |
 
 ![alt text](/photos/hookup_example.jpg "Wireless 433 MHz Door Sensor")
+
+### Installation
+Clone the flash tool and then place in convenient location (e.g., home directory).
+
+  Then clone uni-STC (HAL), clone this repository, and place in the demos folder of uni-stc.
+  
+  Finally change to demo folder.
+  
+  make
+  ~/stcgal-patched/stcgal.py -p COM3 -b 19200 build/door-reed-rf-demo.ihx
+
+Flashing tool:
+https://github.com/area-8051/stcgal-patched
+
+Firmware uses hardware abstraction layer (HAL):
+https://github.com/area-8051/uni-STC
+
+### Receiver Hardware
+Receiving radio packets requires a receiver. Options include the Sonoff RF Bridge 433 MHz and recommend flashing with open source firmware [Tasmota](https://tasmota.github.io/docs/devices/Sonoff-RF-Bridge-433/ "Tasmota") or [ESPurna](https://github.com/xoseperez/espurna "ESPurna"). ESPurna is nice because it treats wireless sensors as "virtual" sensors (show up as permanent switch entities in Home Assistant). Also ESPurna can learn/remember unique sensor codes.
+
+Some Sonoff Bridge(s) contain an onboard EFM8BB1 which can additionally be flashed to support more radio protocols with [Portisch](https://github.com/Portisch/RF-Bridge-EFM8BB1 "Portisch"). I originally thought this would be helpful but apparently most rc-switch protocols are not supported.
+
+You can also use a generic 433 MHz receiver and controller flashed with [rc-switch](https://github.com/sui77/rc-switch).
