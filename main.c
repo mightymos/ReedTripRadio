@@ -93,6 +93,7 @@ static const unsigned char tamper_close = 0x70;
 
 // changed pulse lengths from microseconds to 10 microseconds units
 // because hardware abstraction layer provides delay10us() 
+// I avoid performing multiplies on processor by computing these as constants
 const uint16_t gPulseHigh =   35;
 const uint16_t gPulseLow  = 1085;
 const uint16_t gZeroHigh  =   35;
@@ -100,6 +101,7 @@ const uint16_t gZeroLow   =  105;
 const uint16_t gOneHigh   =  105;
 const uint16_t gOneLow    =   35;
 
+// it saves code space to just specify a single protocol and use define here
 // uncomment only one line immediately below
 #define PROTOCOL_INVERTED false
 //#define PROTOCOL_INVERTED true
@@ -117,6 +119,7 @@ struct Flags {
 };
 
 // isOpen arrays are not initialized
+// should be alright because we only read when count incremented
 struct Flags flag = {
     .reedInterrupted   = false, 
     .tamperInterrupted = false,
@@ -135,7 +138,7 @@ struct Settings {
 };
 
 // default is to pick least frequent wake up time and disable radio heartbeats to save power
-// convention with eeprom is often that uninitizlied is 0xff
+// convention with eeprom is often that uninitialized is 0xff
 struct Settings setting = {
     .eepromWritten = 0xFF, 
     .protocol = 0, 
@@ -147,6 +150,7 @@ struct Settings setting = {
 
 
 // only enable power to radio when we are going to modulate ASK pin (i.e., send data)
+// low pin setting enables transistor which supplies power to radio chip
 inline void enable_radio_vdd(void)
 {
     RADIO_VDD = 0;
@@ -159,8 +163,9 @@ inline void disable_radio_vdd(void)
     RADIO_VDD = 1;
 }
 
-// TODO: are these functions inlined by compiler automatically?
-void radio_ask_high()
+// are these functions inlined by compiler automatically?
+// apparently note, so specify inline
+inline void radio_ask_high()
 {
     #if PROTOCOL_INVERTED
         RADIO_ASK = 0;
@@ -169,7 +174,7 @@ void radio_ask_high()
     #endif
 }
 
-void radio_ask_low()
+inline void radio_ask_low()
 {
     #if PROTOCOL_INVERTED
         RADIO_ASK = 1;
@@ -179,7 +184,7 @@ void radio_ask_low()
 }
 
 // led is controlled by transistor which essentially inverts pin output
-// (so low level turns transistor and then LED on)
+// (so low level enables transistor and then LED is on)
 inline void led_on(void)
 {
     LED_PIN = 0;
@@ -190,6 +195,7 @@ inline void led_off(void)
     LED_PIN = 1;
 }
 
+// using pullup on mcu pin is apparently needed provide high level to tamper switch
 inline void enable_tamper_pullup(void)
 {
     TAMPER_SWITCH = 1;
@@ -291,6 +297,8 @@ void send(const unsigned char byte)
 {
     unsigned char i = 0;
     const unsigned char numBits = 8;
+    
+    // mask out highest bit
     const unsigned char mask = 1 << (numBits - 1);
     
     // byte for shifting
@@ -299,7 +307,7 @@ void send(const unsigned char byte)
     // Repeat until all bits sent
     for(i = 0; i < numBits; i++)
     {
-        // Check bit value, process logic one
+        // check left most bit value, and if equal to one then send one level
         if((toSend & mask) == mask)
         {
             radio_ask_high();
@@ -412,14 +420,13 @@ void main(void)
     __code unsigned char  *cptr;
 
 
-    // gpio, strong pull, input only, etc.
+    // setup gpio, strong pull up, input only, etc.
     configure_pin_modes();
     
     // double pulse LED at startup
     pulseLED(2);
     
-    // disable power to radio for power saving
-    // and to disallow any transmission
+    // disable power to radio for power saving and to disallow any transmission
     disable_radio_vdd();
     
     // datasheet warns against applying (high) pulses to ASK pin while power is disabled
@@ -438,7 +445,7 @@ void main(void)
     guid0   = *(cptr + 5);
     guid1   = *(cptr + 6);
     
-    
+    // does exactly what the function name says
     enable_global_interrupts();
 
 
@@ -452,8 +459,7 @@ void main(void)
         // only enable wake up timer if any heartbeat is enabled
         if (setting.tamperHeartbeatEnabled || setting.reedHeartbeatEnabled || setting.tamperTripEnabled)
         {
-            // DEBUG: need to test out HAL implementation a little more
-            //enablePowerDownWakeUpTimer(millisecondsToWakeUpCount(setting.sleepTime));
+            // FIXME: why does setting to 0x7FFF wake up every two seconds?
             // set wake up count
             WKTC = setting.sleepTime;
             
@@ -465,21 +471,20 @@ void main(void)
         if ((flag.reedCount == 0) && (flag.tamperCount == 0))
         {
             // this will either wake up in the future due to timer (if enabled) or due to interrupt
+            // datasheet and example HAL show providing nops() after power down
             PCON |= M_PD;
             NOP();
             NOP();
             
-            // need to disable wake up timer?
+            // FIXME: need to disable wake up timer?
             WKTC &= ~0x8000;
-            
-            //putc('D');
         }
         
 
         // force sending out periodic messages to indicate tamper state
         if (setting.tamperHeartbeatEnabled)
         {
-            // send different keys depending on pushbutton switch state
+            // send different keys depending on reading push button
             if (isTamperOpen())
             {            
                 sendRadioPacket(tamper_open);
@@ -491,6 +496,7 @@ void main(void)
             ledPulseCount = 1;
         }
         
+        // similar period message but for reed switch
         if (setting.reedHeartbeatEnabled)
         {
             if(isReedOpen())
@@ -506,6 +512,8 @@ void main(void)
             ledPulseCount = 1;
         }
         
+        // if trip setting enabled and one open tamper interrupt has occurred
+        // keep sending out tamper radio message until tamper closes
         if (setting.tamperTripEnabled)
         {
             if (flag.tamperTripped)
@@ -519,7 +527,7 @@ void main(void)
             }
         }
 
-        // send reed switch state after count incremented by interrupt
+        // send reed switch state if count is incremented by interrupt
         while (flag.reedCount > 0)
         {
             // track count because we might have multiple reed events in quick succession
@@ -537,7 +545,7 @@ void main(void)
         }
  
 
-        // it is difficult to capture tamper press releases, so need to count and handle quickly
+        // difficult to capture tamper press releases, so need to track count to avoid misses
         while (flag.tamperCount > 0)
         {
             //
@@ -556,13 +564,13 @@ void main(void)
 
         }
         
-        // blink LED here after sending out radio packets as quickly as possible following wakeup
+        // finally blink LED here after sending out radio packets
         while (ledPulseCount > 0)
         {
             pulseLED(ledPulseCount);
             
-            // we have the potential to pulse LED multiple times
-            // but usually we just pulse once
+            // decrementing (instead of zeroing) allows the potential
+            // to pulse LED multiple times but usually we just pulse once
             ledPulseCount--;
         }
         
