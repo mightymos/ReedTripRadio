@@ -38,8 +38,8 @@
 // highest bit of register will be set to enable wake up timer
 // maximum is 0x7FFF and then highest bit set
 
-// 16 seconds
-#define SLEEP_TIME_0 32767
+// about 16 seconds
+#define SLEEP_TIME_0 32766
 
 
 // milliseconds
@@ -50,7 +50,7 @@
 #define CONTROLLER_STARTUP_TIME 200
 
 // array size
-#define SWITCH_HISTORY_SIZE 3
+#define SWITCH_HISTORY_SIZE 8
 
 // unique ID location in FLASH
 //4K MCU(eg. STC15F404AD, STC15F204EA, STC15F104EA)
@@ -74,8 +74,8 @@ static const unsigned char tamper_close = 0x70;
 // note: if we resend only a generic tamper code (e.g., 0x07) too quickly due to switch press and release
 //       I think the duplicate sends may be discarded at receiver
 
-// FIXME: Other protocols are not working with Sonoff Bridge w/ Tasmota so need to investigate
-// because here available delay function is delay10us() with hardware abstraction layer
+// rc-switch project timings (https://github.com/sui77/rc-switch)
+// FIXME: Other protocols are not working on Sonoff Bridge w/ Tasmota so need to investigate
 // static const struct Protocol protocols[] = {
   // { 350, {  1, 31 }, {  1,  3 }, {  3,  1 }, false },    // protocol 1
   // { 650, {  1, 10 }, {  1,  2 }, {  2,  1 }, false },    // protocol 2
@@ -91,22 +91,25 @@ static const unsigned char tamper_close = 0x70;
   // { 320, { 36,  1 }, {  1,  2 }, {  2,  1 }, true }      // protocol 12 (SM5212)
 // };
 
-// changed pulse lengths given in rc-switch project from microseconds to 10 microseconds units
+// changed pulse lengths from microseconds to 10 microseconds units
+// because hardware abstraction layer provides delay10us() 
 const uint16_t gPulseHigh =   35;
 const uint16_t gPulseLow  = 1085;
 const uint16_t gZeroHigh  =   35;
 const uint16_t gZeroLow   =  105;
 const uint16_t gOneHigh   =  105;
 const uint16_t gOneLow    =   35;
-const bool     gInvertedSignal = false;
 
-
+// uncomment only one line immediately below
+#define PROTOCOL_INVERTED false
+//#define PROTOCOL_INVERTED true
 
 
 // save switch states checked in interrupts for use in main loop
 struct Flags {
     volatile bool reedInterrupted;
     volatile bool tamperInterrupted;
+    volatile bool tamperTripped;
     volatile bool reedIsOpen[SWITCH_HISTORY_SIZE];
     volatile bool tamperIsOpen[SWITCH_HISTORY_SIZE];
     volatile unsigned char tamperCount;
@@ -115,18 +118,20 @@ struct Flags {
 
 // isOpen arrays are not initialized
 struct Flags flag = {
-    .reedInterrupted = false, 
-    .tamperInterrupted = false, 
+    .reedInterrupted   = false, 
+    .tamperInterrupted = false,
+    .tamperTripped     = false,
     .tamperCount = 0, 
-    .reedCount = 0
+    .reedCount   = 0
 };
 
 struct Settings {
     unsigned char eepromWritten;
     unsigned char protocol;
     uint16_t sleepTime;
-    bool heartbeatForTamper;
-    bool heartbeatForReed;
+    bool tamperHeartbeatEnabled;
+    bool reedHeartbeatEnabled;
+    bool tamperTripEnabled;
 };
 
 // default is to pick least frequent wake up time and disable radio heartbeats to save power
@@ -135,8 +140,9 @@ struct Settings setting = {
     .eepromWritten = 0xFF, 
     .protocol = 0, 
     .sleepTime = SLEEP_TIME_0, 
-    .heartbeatForTamper = false, 
-    .heartbeatForReed = false
+    .tamperHeartbeatEnabled = false, 
+    .reedHeartbeatEnabled   = false,
+    .tamperTripEnabled      = true
 };
 
 
@@ -154,24 +160,22 @@ inline void disable_radio_vdd(void)
 }
 
 // TODO: are these functions inlined by compiler automatically?
-void radio_ask_high(bool inverted)
+void radio_ask_high()
 {
-    if (inverted)
-    {
+    #if PROTOCOL_INVERTED
         RADIO_ASK = 0;
-    } else {
+    #else
         RADIO_ASK = 1;
-    }
+    #endif
 }
 
-void radio_ask_low(bool inverted)
+void radio_ask_low()
 {
-    if (inverted)
-    {
+    #if PROTOCOL_INVERTED
         RADIO_ASK = 1;
-    } else {
+    #else
         RADIO_ASK = 0;
-    }
+    #endif
 }
 
 // led is controlled by transistor which essentially inverts pin output
@@ -272,10 +276,10 @@ bool isReedOpen(void)
 void rfsyncPulse()
 {
     // rf sync pulse
-    radio_ask_high(gInvertedSignal);
+    radio_ask_high();
     delay10us_wrapper(gPulseHigh);
     
-    radio_ask_low(gInvertedSignal);
+    radio_ask_low();
     delay10us_wrapper(gPulseLow);
 }
 
@@ -298,18 +302,18 @@ void send(const unsigned char byte)
         // Check bit value, process logic one
         if((toSend & mask) == mask)
         {
-            radio_ask_high(gInvertedSignal);
+            radio_ask_high();
             delay10us_wrapper(gOneHigh);
             
-            radio_ask_low(gInvertedSignal);
+            radio_ask_low();
             delay10us_wrapper(gOneLow);
         }
         else
         {
-            radio_ask_high(gInvertedSignal);
+            radio_ask_high();
             delay10us_wrapper(gZeroHigh);
             
-            radio_ask_low(gInvertedSignal);
+            radio_ask_low();
             delay10us_wrapper(gZeroLow);
         }
         
@@ -342,12 +346,10 @@ void sendRadioPacket(const unsigned char rfcode)
     disable_radio_vdd();
 }
 
+//FIXME: handle reentrancy?
 //-----------------------------------------
 void external_isr0(void) __interrupt 0
 {
-    // disable this interrupt
-    //IE1 &= ~M_EX0;
-    
     if (flag.reedCount < SWITCH_HISTORY_SIZE)
     {
         flag.reedIsOpen[flag.reedCount] = REED_SWITCH;
@@ -359,12 +361,19 @@ void external_isr0(void) __interrupt 0
 //-----------------------------------------
 void external_isr1(void) __interrupt 2
 {
-    // disable this interrupt
-    //IE1 &= ~M_EX1;
+    const bool tamperState = TAMPER_SWITCH;
     
     if (flag.tamperCount < SWITCH_HISTORY_SIZE)
     {
-        flag.tamperIsOpen[flag.tamperCount] = TAMPER_SWITCH;
+        flag.tamperIsOpen[flag.tamperCount] = tamperState;
+        
+        if (setting.tamperTripEnabled)
+        {
+            if (tamperState)
+            {
+                flag.tamperTripped = true;
+            }
+        }
     
         flag.tamperCount++;
     }
@@ -391,8 +400,9 @@ inline void configure_pin_modes(void)
     P3M0 |= 0x01;
 }
 
-void main()
+void main(void)
 {
+    // as per HAL instructions
     INIT_EXTENDED_SFR();
     
     // allow possibility to flash multiple pulses
@@ -400,15 +410,8 @@ void main()
     
     // code pointer for reading microcontroller unique id
     __code unsigned char  *cptr;
-    
-    // used to read from software serial port
-    volatile unsigned char rxByte = 0;
-    bool result = false;
 
-    
-    static uint8_t buffer[8];
 
-    
     // gpio, strong pull, input only, etc.
     configure_pin_modes();
     
@@ -420,7 +423,7 @@ void main()
     disable_radio_vdd();
     
     // datasheet warns against applying (high) pulses to ASK pin while power is disabled
-    radio_ask_low(false);
+    radio_ask_low();
     
     // provide a pull up voltage to the tamper switch
     enable_tamper_pullup();
@@ -434,19 +437,9 @@ void main()
     cptr = (__code unsigned char*) ID_ADDR_ROM;
     guid0   = *(cptr + 5);
     guid1   = *(cptr + 6);
-
+    
     
     enable_global_interrupts();
-    
-    // demonstrate that software serial UART is working
-    // puts("Startup...");
-    // putc('\r');
-    // puts("Version: ");
-    // putc('\r');
-    // puts(__DATE__);
-    // putc('\r');
-    // puts(__TIME__);
-    // putc('\r');
 
 
     // enable tamper and reed interrupts
@@ -457,7 +450,7 @@ void main()
     while (true)
     {
         // only enable wake up timer if any heartbeat is enabled
-        if (setting.heartbeatForTamper || setting.heartbeatForReed)
+        if (setting.tamperHeartbeatEnabled || setting.reedHeartbeatEnabled || setting.tamperTripEnabled)
         {
             // DEBUG: need to test out HAL implementation a little more
             //enablePowerDownWakeUpTimer(millisecondsToWakeUpCount(setting.sleepTime));
@@ -484,7 +477,7 @@ void main()
         
 
         // force sending out periodic messages to indicate tamper state
-        if (setting.heartbeatForTamper)
+        if (setting.tamperHeartbeatEnabled)
         {
             // send different keys depending on pushbutton switch state
             if (isTamperOpen())
@@ -498,7 +491,7 @@ void main()
             ledPulseCount = 1;
         }
         
-        if (setting.heartbeatForReed)
+        if (setting.reedHeartbeatEnabled)
         {
             if(isReedOpen())
             {
@@ -513,6 +506,18 @@ void main()
             ledPulseCount = 1;
         }
         
+        if (setting.tamperTripEnabled)
+        {
+            if (flag.tamperTripped)
+            {
+                sendRadioPacket(tamper_open);
+                
+                if (!isTamperOpen())
+                {
+                    flag.tamperTripped = false;
+                }
+            }
+        }
 
         // send reed switch state after count incremented by interrupt
         while (flag.reedCount > 0)

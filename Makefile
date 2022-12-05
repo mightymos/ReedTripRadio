@@ -56,16 +56,17 @@
 #   make clean
 
 # Target MCU settings --------------------------------------------------
-# for STC15W104 door sensor
+# for STC15W101 mcu used in door sensor
+# for STC15W104 mcu
 MCU_FREQ := 10598000
 STACK_SIZE := 16
 
-# 
+# limit code size to 1 KB to support '101 part
 MEMORY_SIZES = \
 	--iram-size 128 \
     --xram-size 0 \
 	--stack-size $(STACK_SIZE) \
-    --code-size 4096
+    --code-size 1024
 
 #
 MEMORY_MODEL := --model-small

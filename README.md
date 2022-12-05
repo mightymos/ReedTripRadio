@@ -23,17 +23,17 @@ Boards contain a header that may be populated with pins labeled with G (ground),
 | Transmit on tamper switch open/close (interrupt)  | original  | DONE |
 | Manage power modes  | original  | DONE |
 | Support inverted protocols  | added  | DONE |
-| Ability to select any supported rc-switch transmission protocol  | added  | DONE |
+| Ability to specify timings for transmission protocol (e.g. rc-switch)  | added  | DONE |
 | "Heart beat" mode for periodic transmission   | added  | DONE |
 | Adjustable LED blink behavior   | added  | TODO |
-| Adjustable sleep behavior  | added  | DONE |
-| User configuration/input with tamper switch press(es) or serial bytes  | added  | DONE |
+| Adjustable sleep behavior  | added  | TODO |
+| User configuration/input with tamper switch press(es) | added  | TODO |
 | Add tamper closed key  | added  | DONE |
-| Add tamper "trip" mode   | added  | TODO |
-| Store settings in EEPROM  | added  | DONE |
+| Add tamper "trip" mode   | added  | DONE |
+| Store settings in EEPROM  | added  | TODO |
 | Send information over radio (e.g., settings?, battery?)  | added  | TODO |
 | Compare power usage to original firmware  | added  | TODO |
-| Test transmission protocols 2-12  | added  | TODO |
+| Test other transmission protocols  | added  | TODO |
 
 ![alt text](/photos/hookup_example.jpg "Wireless 433 MHz Door Sensor")
 
@@ -53,7 +53,7 @@ git clone https://github.com/mightymos/ReedTripRadio.git
 make
 
 # make file should be used to flash in the future
-~/stcgal-patched/stcgal.py -p COM3 -b 19200 build/door-reed-rf-demo.ihx
+~/stcgal-patched/stcgal.py -p COM3 -b 19200 build/ReedTripRadio.ihx
 ```
 
 ### Receiver Hardware
