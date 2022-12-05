@@ -1,16 +1,17 @@
 ### Description
 This is an alternative firmware for wireless 433MHz magnetic door/window reed sensors.
 
-STC15W104 are 8051 based processors + SYN115 radio transmitter.  
-'104 model has 4KB flash space and board also has a tamper detect switch which is cool.
-
-Some sensors have STC15W101 but with only 1KB flash.  
-Also some sensors purchased did not have tamper switch installed.  
-Anyway 1KB flash would not support software serial or hardware abstraction layer (HAL).  
+STC15W101/104 are 8051 based processors + SYN115 radio transmitter.  
+'101 model has 1KB flash.  
+'104 model has 4KB flash and circuit board also has a tamper detect switch.
+ 
+Instead of supporting software serial or full hardware abstraction layer (HAL),  
+it is decided to keep firmware under 1KB so it works on multiple processors/boards.  
 One possibility however is to use emulated EEPROM area for code space.
 
-Additionally STC processors do not allow read/verify of written firmware.  
-Therefore open source alternative is needed to confirm program behavior.
+Finally, STC processors do not allow read/verify of written firmware.  
+Therefore open source alternative is needed to confirm program behavior.  
+Also for this reasons original firmware can not be reflashed once overwritten.  
 
 Boards contain a header that may be populated with pins labeled with G (ground), T (transmit), and R (receive) for flashing with USB to UART module.
 
@@ -60,7 +61,7 @@ Receiving radio packets requires a receiver. Options include the Sonoff RF Bridg
 
 Some Sonoff Bridge(s) contain an onboard EFM8BB1 which can additionally be flashed to support more radio protocols with [Portisch](https://github.com/Portisch/RF-Bridge-EFM8BB1 "Portisch"). I originally thought this would be helpful but apparently most rc-switch protocols are not supported.
 
-You can also use a generic 433 MHz receiver and controller flashed with [rc-switch](https://github.com/sui77/rc-switch).
+You can also use a generic 433 MHz receiver and controller using [rc-switch](https://github.com/sui77/rc-switch) library.
 
 ### Wireless door/window sensor
 | Source | Link | Price (USD) |
