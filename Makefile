@@ -76,12 +76,10 @@ HAS_DUAL_DPTR := n
 include ../../makefiles/0-directories.mk
 
 # Project settings -----------------------------------------------------
-PROJECT_NAME := door-reed-rf-demo
+PROJECT_NAME := ReedTripRadio
 
 SRCS := \
     $(HAL_DIR)/delay.c \
-    $(HAL_DIR)/eeprom-hal.c \
-    uart_software.c \
 	main.c
 
 CONSOLE_BAUDRATE := 19200

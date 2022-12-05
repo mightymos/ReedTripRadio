@@ -155,3 +155,40 @@ void puthex2(const unsigned char x)
    puthex(x >> 4);
    puthex(x);
 }
+
+unsigned char uart_rx(bool* result)
+{
+    volatile unsigned char rxByte = 0;
+    *result = false;
+    
+    // provided in software UART example
+    if (REND)
+    {
+        // this is shown in the original example
+        // i think we need to access buffer, so index does not get confused
+        // even though we basically just use rxByte to store a single byte
+        buf[r++ & 0x08] = RBUF;
+        REND = 0;
+        rxByte = buf[(r-1) & 0x08];
+        *result = true;
+    }
+    
+    return rxByte;
+}
+
+void uart_loop_test(void)
+{
+    volatile unsigned char rxByte = 0;
+    bool result;
+    
+    while(true)
+    {
+        rxByte = uart_rx(&result);
+        
+        if (result)
+        {  
+            // echo back character
+            putc(rxByte);
+        }
+    }
+}
