@@ -39,6 +39,8 @@ Boards contain a header that may be populated with pins labeled with G (ground),
 
 ### Installation
 ```
+# install https://sdcc.sourceforge.net/ for your platform
+
 cd ~/
 
 # flashing tool
