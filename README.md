@@ -9,8 +9,11 @@ Instead of supporting software serial or full hardware abstraction layer (HAL),
 it is decided to keep firmware under 1KB so it works on multiple processors/boards.  
 One possibility however is to use emulated EEPROM area for code space.
 
+Experiments with booting from other memory spaces have not worked so far:  
+https://github.com/mightymos/stc15bootisp/issues/1
+
 Finally, STC processors do not allow read/verify of written firmware.  
-Therefore open source alternative is needed to confirm program behavior.  
+Therefore an open source alternative is needed to confirm program behavior.  
 Also for this reason original firmware can not be reflashed once overwritten.  
 
 Boards contain a header that may be populated with pins labeled with G (ground), T (transmit), and R (receive) for flashing with USB to UART module.
