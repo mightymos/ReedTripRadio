@@ -28,15 +28,15 @@ Boards contain a header that may be populated with pins labeled with G (ground),
 | Support inverted protocols  | added  | DONE |
 | Ability to specify timings for transmission protocol (e.g. rc-switch)  | added  | DONE |
 | "Heart beat" mode for periodic transmission   | added  | DONE |
-| Adjustable LED blink behavior   | added  | TODO |
-| Adjustable sleep behavior  | added  | TODO |
-| User configuration/input with tamper switch press(es) | added  | TODO |
+| Adjustable LED blink behavior   | added  | todo |
+| Adjustable sleep behavior  | added  | todo |
+| User configuration/input with tamper switch press(es) | added  | todo |
 | Add tamper closed key  | added  | DONE |
 | Add tamper "trip" mode   | added  | DONE |
-| Store settings in EEPROM  | added  | TODO |
-| Send information over radio (e.g., settings?, battery?)  | added  | TODO |
-| Compare power usage to original firmware  | added  | TODO |
-| Test other transmission protocols  | added  | TODO |
+| Store settings in EEPROM  | added  | todo |
+| Send information over radio (e.g., settings?, battery?)  | added  | todo |
+| Compare power usage to original firmware  | added  | todo |
+| Test other transmission protocols  | added  | todo |
 
 ![alt text](/photos/hookup_example.jpg "Wireless 433 MHz Door Sensor")
 
