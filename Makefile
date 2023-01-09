@@ -62,11 +62,13 @@ MCU_FREQ := 10598000
 STACK_SIZE := 16
 
 # limit code size to 1 KB to support '101 part
+# take care to account for 7 bytes of unique id
+# so for example 1024 byte part minus 7 bytes is limited to 1017 flash
 MEMORY_SIZES = \
 	--iram-size 128 \
     --xram-size 0 \
 	--stack-size $(STACK_SIZE) \
-    --code-size 1024
+    --code-size 1017
 
 #
 MEMORY_MODEL := --model-small

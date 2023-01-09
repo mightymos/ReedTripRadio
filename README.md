@@ -28,15 +28,16 @@ Boards contain a header that may be populated with pins labeled with G (ground),
 | Support inverted protocols  | added  | DONE |
 | Ability to specify timings for transmission protocol (e.g. rc-switch)  | added  | DONE |
 | "Heart beat" mode for periodic transmission   | added  | DONE |
-| Adjustable LED blink behavior   | added  | todo |
-| Adjustable sleep behavior  | added  | todo |
-| User configuration/input with tamper switch press(es) | added  | todo |
 | Add tamper closed key  | added  | DONE |
 | Add tamper "trip" mode   | added  | DONE |
+| Send code if pin goes low indicating low battery   | original  | DONE |
 | Store settings in EEPROM  | added  | todo |
 | Send information over radio (e.g., settings?, battery?)  | added  | todo |
 | Compare power usage to original firmware  | added  | todo |
 | Test other transmission protocols  | added  | todo |
+| Adjustable LED blink behavior   | added  | todo |
+| Adjustable sleep behavior  | added  | todo |
+| User configuration/input with tamper switch press(es) | added  | todo |
 
 ![alt text](/photos/hookup_example.jpg "Wireless 433 MHz Door Sensor")
 
@@ -59,6 +60,7 @@ cd ReedTripRadio/
 make
 
 # make file should be used to flash in the future
+# (port format specific to Windows, change for other systems)
 ~/stcgal-patched/stcgal.py -p COM3 -b 19200 build/ReedTripRadio.ihx
 ```
 

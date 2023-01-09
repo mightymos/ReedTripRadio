@@ -18,13 +18,17 @@
 
 // hardware pin definitions
 // circuit is voltage divider and high side transistor with processor controlling divider
-#define RADIO_VDD     P3_0
+#define RADIO_VDD      P3_0
 // LED is attached to P3.1 for door sensor RF 433 MHz (STC15W101 and STC15W104 processor, SYN115 RF transmitter)
-#define LED_PIN       P3_1
-#define REED_SWITCH   P3_2
-#define TAMPER_SWITCH P3_3
+#define LED_PIN        P3_1
+#define REED_SWITCH    P3_2
+#define TAMPER_SWITCH  P3_3
 // ASK modulation to RF chip
-#define RADIO_ASK     P3_4
+#define RADIO_ASK      P3_4
+// on my board when variable power supply (stand in for battery)
+// reaches just above one volt from starting point of 1.5 volts
+//this signal line goes from high (3.3V) to low (0V)
+#define BATTERY_DETECT P3_5
 
 
 // radio protocol requires sending packet twice so it is accepted at receiver
@@ -68,11 +72,13 @@ static unsigned char guid1 = 0x00;
 // codes used in original firmware
 static const unsigned char reed_open    = 0x0A;
 static const unsigned char reed_close   = 0x0E;
+// low voltage code reported by https://community.home-assistant.io/t/budget-priced-wife-friendly-wireless-wall-switch-using-433mhz-and-mqtt/88281
+static const unsigned char battery_low  = 0x06;
 static const unsigned char tamper_open  = 0x07;
 static const unsigned char tamper_close = 0x70;
 // added to support tamper closed
-// note: if we resend only a generic tamper code (e.g., 0x07) too quickly due to switch press and release
-//       I think the duplicate sends may be discarded at receiver
+// note: if we resend only a generic tamper code (e.g., 0x07) too quickly due to any switch change (e.g., a press and then a release)
+//       I think the duplicate code sent may be discarded at receiver
 
 // rc-switch project timings (https://github.com/sui77/rc-switch)
 // FIXME: Other protocols are not working on Sonoff Bridge w/ Tasmota so need to investigate
@@ -243,25 +249,20 @@ void delay10us_wrapper(unsigned int microseconds)
  *         Brief description continued.
  *
  */
-void pulseLED(unsigned char repeat)
+void pulseLED(void)
 {
-    unsigned char i;
+    led_on();
+    delay1ms(LED_HIGH_TIME);
     
-    for (i = 0; i < repeat; i++)
-    {
-        led_on();
-        delay1ms(LED_HIGH_TIME);
-        
-        led_off();
-        delay1ms(LED_LOW_TIME);
-    }
+    led_off();
+    delay1ms(LED_LOW_TIME);
 }
 
 /*! \brief Pull up to pin must be enabled to read tamper switch.
  *         Need to measure current usage to compare to using interrupts.
  *
  */        
-bool isTamperOpen(void)
+inline bool isTamperOpen(void)
 {
     volatile bool pinState;
     
@@ -270,13 +271,22 @@ bool isTamperOpen(void)
     return pinState;
 }
 
-bool isReedOpen(void)
+inline bool isReedOpen(void)
 {
     volatile bool pinState;
     
     pinState = REED_SWITCH;
     
     return pinState;
+}
+
+inline bool isBatteryLow(void)
+{
+    volatile bool pinState;
+    
+    pinState = BATTERY_DETECT;
+    
+    return !pinState;
 }
 
 void rfsyncPulse()
@@ -388,19 +398,22 @@ void external_isr1(void) __interrupt 2
 }
 
 //TODO: push pull mode uses lots of current, so need to see if it is avoidable
-//radioASK     GPIO_PIN_CONFIG(GPIO_PORT3, GPIO_PIN4, GPIO_BIDIRECTIONAL_MODE);
-//tamperSwitch GPIO_PIN_CONFIG(GPIO_PORT3, GPIO_PIN3, GPIO_PUSH_PULL_MODE);
-//reedSwitch   GPIO_PIN_CONFIG(GPIO_PORT3, GPIO_PIN2, GPIO_HIGH_IMPEDANCE_MODE);
-//ledPin       GPIO_PIN_CONFIG(GPIO_PORT3, GPIO_PIN1, GPIO_OPEN_DRAIN_MODE);
-//radioVDD     GPIO_PIN_CONFIG(GPIO_PORT3, GPIO_PIN0, GPIO_OPEN_DRAIN_MODE);
+//batteryMonitor GPIO_PIN_CONFIG(GPIO_PORT3, GPIO_PIN5, GPIO_HIGH_IMPEDANCE_MODE);
+//radioASK       GPIO_PIN_CONFIG(GPIO_PORT3, GPIO_PIN4, GPIO_BIDIRECTIONAL_MODE);
+//tamperSwitch   GPIO_PIN_CONFIG(GPIO_PORT3, GPIO_PIN3, GPIO_PUSH_PULL_MODE);
+//reedSwitch     GPIO_PIN_CONFIG(GPIO_PORT3, GPIO_PIN2, GPIO_HIGH_IMPEDANCE_MODE);
+//ledPin         GPIO_PIN_CONFIG(GPIO_PORT3, GPIO_PIN1, GPIO_OPEN_DRAIN_MODE);
+//radioVDD       GPIO_PIN_CONFIG(GPIO_PORT3, GPIO_PIN0, GPIO_OPEN_DRAIN_MODE);
 inline void configure_pin_modes(void)
 {
+    P3M1 |= 0x20;
     P3M1 &= ~0x10;
     P3M1 &= ~0x08;
     P3M1 |= 0x04;
     P3M1 |= 0x02;
     P3M1 |= 0x01;
     
+    P3M0 &= ~0x20;
     P3M0 &= ~0x10;
     P3M0 |= 0x08;
     P3M0 &= ~0x04;
@@ -424,7 +437,8 @@ void main(void)
     configure_pin_modes();
     
     // double pulse LED at startup
-    pulseLED(2);
+    pulseLED();
+    pulseLED();
     
     // disable power to radio for power saving and to disallow any transmission
     disable_radio_vdd();
@@ -526,6 +540,16 @@ void main(void)
                 }
             }
         }
+        
+        // FIXME: consider making interrupt based
+        // FIXME: consider distinguising between battery going from low to high versus high to low
+        // whenever microcontroller is awake just check for low battery
+        if (isBatteryLow())
+        {
+            sendRadioPacket(battery_low);
+            
+            ledPulseCount = 1;
+        }
 
         // send reed switch state if count is incremented by interrupt
         while (flag.reedCount > 0)
@@ -564,10 +588,11 @@ void main(void)
 
         }
         
+        
         // finally blink LED here after sending out radio packets
         while (ledPulseCount > 0)
         {
-            pulseLED(ledPulseCount);
+            pulseLED();
             
             // decrementing (instead of zeroing) allows the potential
             // to pulse LED multiple times but usually we just pulse once
