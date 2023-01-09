@@ -1,0 +1,25 @@
+name: RF433 window sensor
+
+on:
+  workflow_dispatch:  # Manually start a workflow
+  push:
+    tags: ["v*.*.*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build firmware
+      run: bash ./.github/build.sh
+    - name: Display files
+      run: ls -R ./*
+    - name: setenv release tag
+      run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+    - name: Release
+      uses: jason2866/action-gh-release@v1.2
+      with:
+        tag_name: ${{ env.RELEASE_VERSION }}
+        files: ./uni-STC/demos/ReedTripRadio/build/*.ihx
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
