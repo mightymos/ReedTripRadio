@@ -55,6 +55,7 @@ cd uni-STC/demos/
 
 # this repository
 git clone https://github.com/mightymos/ReedTripRadio.git
+cd ReedTripRadio/
 make
 
 # make file should be used to flash in the future
