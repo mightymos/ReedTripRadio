@@ -74,4 +74,4 @@ You can also use a generic 433 MHz receiver and controller using [rc-switch](htt
 ### Wireless door/window sensor
 | Source | Link | Price (USD) |
 | ------------- | ------------- | ------------- |
-| aliexpress  | https://www.aliexpress.us/item/3256803337417240.html?spm=a2g0o.order_list.order_list_main.23.7cf8180213pdH3&gatewayAdapt=glo2usa&_randl_shipto=US  | $4.09 (12/05/2022) |
+| aliexpress  | https://www.aliexpress.com/item/3256803337417240.html  | $4.09 (12/05/2022) |
