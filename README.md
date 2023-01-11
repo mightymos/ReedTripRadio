@@ -39,7 +39,7 @@ Boards contain a header that may be populated with pins labeled with G (ground),
 | Adjustable sleep behavior  | added  | todo |
 | User configuration/input with tamper switch press(es) | added  | todo |
 
-![alt text](/photos/hookup_example.jpg "Wireless 433 MHz Door Sensor")
+![alt text](/photos/water_leak_store_hookup_example.jpg "Wireless 433 MHz Door Sensor")
 
 ### Installation
 ```
