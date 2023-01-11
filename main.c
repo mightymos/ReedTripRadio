@@ -70,15 +70,18 @@ static unsigned char guid0 = 0x00;
 static unsigned char guid1 = 0x00;
 
 // codes used in original firmware
+// (we leave upper bits available for possibly adding transmission count in future)
 static const unsigned char reed_open    = 0x0A;
 static const unsigned char reed_close   = 0x0E;
 // low voltage code reported by https://community.home-assistant.io/t/budget-priced-wife-friendly-wireless-wall-switch-using-433mhz-and-mqtt/88281
+// if sensor is being powered by header pins this will also show low apparently
 static const unsigned char battery_low  = 0x06;
 static const unsigned char tamper_open  = 0x07;
-static const unsigned char tamper_close = 0x70;
-// added to support tamper closed
+// added close to support tamper closed
 // note: if we resend only a generic tamper code (e.g., 0x07) too quickly due to any switch change (e.g., a press and then a release)
 //       I think the duplicate code sent may be discarded at receiver
+static const unsigned char tamper_close = 0x08;
+
 
 // rc-switch project timings (https://github.com/sui77/rc-switch)
 // FIXME: Other protocols are not working on Sonoff Bridge w/ Tasmota so need to investigate

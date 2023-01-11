@@ -57,6 +57,7 @@
 
 # Target MCU settings --------------------------------------------------
 # for STC15W101 mcu used in door sensor
+#MCU_PREQ := 11057000
 # for STC15W104 mcu
 MCU_FREQ := 10598000
 STACK_SIZE := 16
